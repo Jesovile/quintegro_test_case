@@ -4,6 +4,7 @@ import MainLayout from './components/MainLayout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import OrderPage from './pages/OrderPage'
+import CheckoutPage from './pages/CheckoutPage'
 
 const App: React.FC = () => {
   return (
@@ -14,6 +15,7 @@ const App: React.FC = () => {
           <Route path="/login" component={LoginPage} />
           <Route path="/order" component={OrderPage} />
           <Route path='/hui' component={() => <h1>HUI 888123</h1>}/>
+          <Route path="/checkout/:orderId" component={CheckoutPage} />
         </Switch>
       </MainLayout>
     </Router>

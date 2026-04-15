@@ -1,4 +1,4 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
+import { OrderRecord, OrderDTO, ProductRecord, PromoEntity, DeliveryInfo, PaymentInfo } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
 
 export class OrderService {
@@ -116,6 +116,46 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
+  async startCheckout(orderId: string, userId: string): Promise<boolean> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) return false;
+    if (order.userId !== userId) return false;
+    if (order.status !== 'created') return false;
+
+    this.updateOrder({ ...order, status: 'checkout' });
+    return true;
+  }
+
+  async checkoutOrder(
+    orderId: string,
+    userId: string,
+    deliveryInfo: DeliveryInfo,
+    cardNumber: string,
+    cardHolderName: string
+  ): Promise<boolean> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) return false;
+    if (order.userId !== userId) return false;
+    if (order.status !== 'checkout') return false;
+
+    const payment: PaymentInfo = {
+      cardLastFour: cardNumber.replace(/\s/g, '').slice(-4),
+      cardHolderName,
+    };
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      status: 'submited',
+      delivery: deliveryInfo,
+      payment,
+    };
+
+    this.updateOrder(updatedOrder);
+    return true;
+  }
+
   async submitOrder(orderId: string, userId: string): Promise<boolean> {
     const order = this.orderRepository.findById(orderId);
     
@@ -183,7 +223,9 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      delivery: order.delivery,
+      payment: order.payment,
     };
   }
 }

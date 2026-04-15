@@ -115,6 +115,61 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
+      startCheckout: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) throw new Error('Authentication required');
+
+        try {
+          const success = await orderService.startCheckout(orderId, userId);
+          if (!success) throw new Error('Order not found, access denied, or not in created status');
+          return success;
+        } catch (error) {
+          throw new Error('Failed to start checkout');
+        }
+      },
+
+      checkoutOrder: async (
+        parent: any,
+        { orderId, input }: {
+          orderId: string;
+          input: {
+            name: string; addressLine1: string; addressLine2: string;
+            zip: string; city: string; country: string;
+            phoneCode: string; phoneNumber: string;
+            deliveryOption: string; cardNumber: string;
+            cardExpiry: string; cardCvv: string; cardHolderName: string;
+          }
+        },
+        context: any
+      ) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) throw new Error('Authentication required');
+
+        try {
+          const success = await orderService.checkoutOrder(
+            orderId,
+            userId,
+            {
+              name: input.name,
+              addressLine1: input.addressLine1,
+              addressLine2: input.addressLine2,
+              zip: input.zip,
+              city: input.city,
+              country: input.country,
+              phoneCode: input.phoneCode,
+              phoneNumber: input.phoneNumber,
+              option: input.deliveryOption as 'fast' | 'fastest',
+            },
+            input.cardNumber,
+            input.cardHolderName
+          );
+          if (!success) throw new Error('Order not found, access denied, or not in checkout status');
+          return success;
+        } catch (error) {
+          throw new Error('Failed to checkout order');
+        }
+      },
+
       deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {

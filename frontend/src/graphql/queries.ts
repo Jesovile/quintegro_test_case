@@ -21,6 +21,21 @@ export const GET_ORDERS = gql`
         discount
         dueDate
       }
+      delivery {
+        name
+        addressLine1
+        addressLine2
+        zip
+        city
+        country
+        phoneCode
+        phoneNumber
+        option
+      }
+      payment {
+        cardLastFour
+        cardHolderName
+      }
     }
   }
 `;
@@ -45,6 +60,21 @@ export const GET_ORDER = gql`
         id
         discount
         dueDate
+      }
+      delivery {
+        name
+        addressLine1
+        addressLine2
+        zip
+        city
+        country
+        phoneCode
+        phoneNumber
+        option
+      }
+      payment {
+        cardLastFour
+        cardHolderName
       }
     }
   }

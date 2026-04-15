@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
+import { useHistory } from 'react-router-dom'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
 import { Loader2 } from 'lucide-react'
@@ -21,14 +22,14 @@ interface OrderItem {
 
 interface Order {
   orderId: string
-  status: 'created' | 'submited' | 'finished'
+  status: 'created' | 'checkout' | 'submited' | 'finished'
   products: OrderItem[]
 }
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
 
-  const { loading, error, refetch } = useQuery(GET_ORDERS, {
+  const { loading, error } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
       setOrders(data.orders || [])
     },
@@ -37,14 +38,7 @@ const OrderList: React.FC = () => {
     }
   })
 
-  const [submitOrder] = useMutation(SUBMIT_ORDER, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Failed to submit order:', error)
-    }
-  })
+  const history = useHistory()
 
   const [_deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: (data) => {
@@ -84,14 +78,8 @@ const OrderList: React.FC = () => {
     )
   }
 
-  const handleSubmitOrder = async (orderId: string) => {
-    try {
-      await submitOrder({
-        variables: { orderId }
-      })
-    } catch (error) {
-      console.error('Error submitting order:', error)
-    }
+  const handleSubmitOrder = (orderId: string) => {
+    history.push(`/checkout/${orderId}`)
   }
 
   if (loading) {

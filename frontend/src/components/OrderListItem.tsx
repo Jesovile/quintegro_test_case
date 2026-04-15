@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useHistory } from 'react-router-dom'
 import { Plus, Minus, Trash2 } from 'lucide-react'
 import { useMutation } from '@apollo/client'
 import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
@@ -26,6 +27,8 @@ interface OrderListItemProps {
 
 const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
+  const isEditable = status === 'created'
+  const history = useHistory()
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
@@ -96,7 +99,7 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
                   variant="outline"
                   size="icon"
                   onClick={handleDecrement}
-                  disabled={currentAmount <= 1}
+                  disabled={!isEditable || currentAmount <= 1}
                   className="h-9 w-9 transition-all duration-200 hover:bg-red-500 hover:text-white hover:scale-110 disabled:opacity-50 border-gray-300"
                 >
                   <Minus className="h-4 w-4" />
@@ -107,13 +110,14 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
                   onChange={handleInputChange}
                   min={1}
                   max={10}
-                  className="w-20 text-center h-9"
+                  disabled={!isEditable}
+                  className="w-20 text-center h-9 disabled:opacity-50"
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={handleIncrement}
-                  disabled={currentAmount >= 10}
+                  disabled={!isEditable || currentAmount >= 10}
                   className="h-9 w-9 transition-all duration-200 hover:bg-green-500 hover:text-white hover:scale-110 disabled:opacity-50 border-gray-300"
                 >
                   <Plus className="h-4 w-4" />
@@ -122,7 +126,8 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
                   variant="outline"
                   size="icon"
                   onClick={handleDelete}
-                  className="h-9 w-9 transition-all duration-200 text-red-600 hover:bg-red-500 hover:text-white hover:scale-110 border-gray-300"
+                  disabled={!isEditable}
+                  className="h-9 w-9 transition-all duration-200 text-red-600 hover:bg-red-500 hover:text-white hover:scale-110 disabled:opacity-50 border-gray-300"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -138,6 +143,16 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
             Submit Order
+          </Button>
+        </div>
+      )}
+      {isLast && status === 'checkout' && (
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={() => history.push(`/checkout/${orderId}`)}
+            className="min-w-[160px] h-10 bg-amber-500 hover:bg-amber-600 text-white font-medium"
+          >
+            Continue Checkout
           </Button>
         </div>
       )}

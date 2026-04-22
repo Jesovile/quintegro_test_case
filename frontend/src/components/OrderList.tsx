@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { SUBMIT_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
 import { Loader2 } from 'lucide-react'
@@ -43,22 +43,6 @@ const OrderList: React.FC = () => {
     },
     onError: (error) => {
       console.error('Failed to submit order:', error)
-    }
-  })
-
-  const [_deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
-    onCompleted: (data) => {
-      // Update local state with the returned order
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.orderId === data.deleteProductFromOrder.orderId 
-            ? data.deleteProductFromOrder 
-            : order
-        )
-      )
-    },
-    onError: (error) => {
-      console.error('Failed to delete product:', error)
     }
   })
 

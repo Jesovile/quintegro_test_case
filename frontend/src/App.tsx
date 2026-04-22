@@ -13,7 +13,6 @@ const App: React.FC = () => {
           <Route exact path="/" component={HomePage} />
           <Route path="/login" component={LoginPage} />
           <Route path="/order" component={OrderPage} />
-          <Route path='/hui' component={() => <h1>HUI 888123</h1>}/>
         </Switch>
       </MainLayout>
     </Router>

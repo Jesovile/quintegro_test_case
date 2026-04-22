@@ -20,7 +20,15 @@ import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  private userRepository = new InMemoryUserRepository();
+  private authRepository = new InMemoryAuthRepository();
+  private orderRepository = new InMemoryOrderRepository();
+  private productRepository = new InMemoryProductRepository();
+  private promoRepository = new InMemoryPromoRepository();
+
+  private authService = new AuthService(this.authRepository, this.userRepository);
+  private orderService = new OrderService(this.orderRepository, this.productRepository, this.promoRepository);
+  private promoService = new PromoService(this.promoRepository);
 
   constructor() {
     this.app = express();
@@ -47,29 +55,14 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+    const authController = new AuthController(this.authService);
+    const orderController = new OrderController(this.orderService, this.authService);
+    const promoController = new PromoController(this.promoService);
 
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
-    // Initialize controllers
-    const authController = new AuthController(authService);
-    const orderController = new OrderController(orderService, authService);
-    const promoController = new PromoController(promoService);
-
-    // Setup routes
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes([this.orderRepository]));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -97,21 +90,7 @@ export class App {
   }
 
   private async initializeGraphQL(): Promise<void> {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
-    // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(this.orderService, this.authService, this.promoService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

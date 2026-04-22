@@ -25,7 +25,7 @@ export interface ProductRecord {
   image: string;
 }
 
-export type OrderStatus = 'created' | 'checkout' | 'submited' | 'finished';
+export type OrderStatus = 'created' | 'checkout' | 'submited' | 'finished' | 'canceled';
 
 export interface ShippingInfo {
   fullName: string;
@@ -48,6 +48,7 @@ export interface OrderRecord {
   status: OrderStatus;
   createAt: number;
   placedAt?: number;
+  canceledAt?: number;
   products: Array<{
     id: string;
     amount: number;
@@ -63,6 +64,7 @@ export interface OrderDTO {
   status: OrderStatus;
   createAt: number;
   placedAt?: number;
+  canceledAt?: number;
   products: Array<{
     product: ProductRecord;
     amount: number;

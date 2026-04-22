@@ -206,9 +206,15 @@ export class OrderService {
     const order = this.orderRepository.findById(orderId);
     if (!order) return { ok: false, error: 'ORDER_NOT_FOUND' };
     if (order.userId !== userId) return { ok: false, error: 'FORBIDDEN' };
-    if (order.status !== 'checkout') return { ok: false, error: 'INVALID_STATUS' };
+    if (order.status !== 'checkout' && order.status !== 'created') {
+      return { ok: false, error: 'INVALID_STATUS' };
+    }
 
-    const updated: OrderRecord = { ...order, status: 'created' };
+    const updated: OrderRecord = {
+      ...order,
+      status: 'canceled',
+      canceledAt: Date.now()
+    };
     this.updateOrder(updated);
     return { ok: true, order: this.transformToDTO(updated) };
   }
@@ -313,6 +319,7 @@ export class OrderService {
       status: order.status,
       createAt: order.createAt,
       placedAt: order.placedAt,
+      canceledAt: order.canceledAt,
       products: Array.from(uniqueProducts.values()),
       promo: order.promo,
       shipping: order.shipping,

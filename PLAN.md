@@ -8,8 +8,11 @@
 - Promo work deferred. Do not remove existing promo code; leave untouched.
 
 ## Assumptions / decisions
-- Status lifecycle: `created → checkout → submited → finished`.
+- Status lifecycle:
+  - `created → checkout → submited → finished`
+  - `created | checkout → canceled` (terminal; lives in history)
 - `checkout` added so UI can block edits while wizard in progress.
+- Canceling from checkout is terminal, not a return-to-cart. Canceled orders appear in history with `canceledAt` timestamp, preserving shipping draft for user reference.
 - Shipping + payment persisted on the `OrderRecord` itself, not a separate entity.
 - Validation double-sided: client for UX, server enforces on `placeOrder`.
 - Payment mock: always succeeds unless card number starts with `0000` (for test failure path).
@@ -109,8 +112,8 @@ Files:
 - Refactor `OrderList.tsx`:
   - Accept `mode: 'current' | 'history'` prop.
   - Filter orders by status. Current = `created | checkout`. History = `submited | finished`.
-  - In history mode: read-only (no qty controls, no delete, no submit). Sort desc by `placedAt ?? createAt`.
-  - In current mode: replace inline "Submit Order" button with "Proceed to Checkout" → `history.push('/checkout/' + orderId)`.
+  - In history mode: read-only (no qty controls, no delete, no submit). Filter = `submited | finished | canceled`. Sort desc by `canceledAt ?? placedAt ?? createAt`.
+  - In current mode: filter = `created | checkout`. Replace inline "Submit Order" button with "Proceed to Checkout" → `history.push('/checkout/' + orderId)`.
 - `OrderListItem.tsx` — add `readOnly` prop, hide controls when true.
 - `CurrentOrder.tsx` (header cart badge) — derive count from `GET_ORDERS` (sum of amounts in current order) instead of localStorage stub.
 
@@ -136,7 +139,7 @@ Page:
   - Reads `:orderId`, fetches `GET_ORDER`.
   - Guards: if status `submited|finished` → redirect to history. If not owner → redirect to /order.
   - `useReducer` for wizard state: `{ step, shippingDraft, paymentDraft, error }`.
-  - Back button on steps 2+ calls `cancelCheckout` only if user explicitly abandons (leave checkout route) — not on intra-step back.
+  - Explicit "Cancel order" button calls `cancelCheckout` → confirm dialog → redirect to `/order/history` with canceled badge. Intra-step back does NOT cancel.
 
 GraphQL:
 - `frontend/src/graphql/mutations.ts` — add `START_CHECKOUT`, `UPDATE_CHECKOUT`, `PLACE_ORDER`, `CANCEL_CHECKOUT`.

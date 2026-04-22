@@ -269,6 +269,129 @@ export function createOrderRoutes(orderController: OrderController): Router {
 
   /**
    * @swagger
+   * /order/{orderId}/checkout/start:
+   *   post:
+   *     summary: Move order into checkout state
+   *     tags: [Checkout]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: orderId
+   *         required: true
+   *         schema: { type: string }
+   *     responses:
+   *       200:
+   *         description: Order in checkout state
+   *       403: { description: Invalid token }
+   *       404: { description: Order not found }
+   *       409: { description: Invalid status transition }
+   */
+  router.post('/:orderId/checkout/start', (req, res) => orderController.startCheckout(req, res));
+
+  /**
+   * @swagger
+   * /order/{orderId}/checkout:
+   *   patch:
+   *     summary: Update checkout draft (shipping)
+   *     tags: [Checkout]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: orderId
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [shipping]
+   *             properties:
+   *               shipping:
+   *                 type: object
+   *                 required: [fullName, address, city, zip, country, phone]
+   *                 properties:
+   *                   fullName: { type: string }
+   *                   address: { type: string }
+   *                   city: { type: string }
+   *                   zip: { type: string }
+   *                   country: { type: string }
+   *                   phone: { type: string }
+   *     responses:
+   *       200: { description: Checkout updated }
+   *       400: { description: Invalid or missing shipping }
+   *       403: { description: Invalid token }
+   *       404: { description: Order not found }
+   *       409: { description: Order not in checkout state }
+   */
+  router.patch('/:orderId/checkout', (req, res) => orderController.updateCheckout(req, res));
+
+  /**
+   * @swagger
+   * /order/{orderId}/checkout/place:
+   *   post:
+   *     summary: Charge card and place the order
+   *     tags: [Checkout]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: orderId
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [card]
+   *             properties:
+   *               card:
+   *                 type: object
+   *                 required: [number, holderName, expiryMonth, expiryYear, cvv]
+   *                 properties:
+   *                   number: { type: string }
+   *                   holderName: { type: string }
+   *                   expiryMonth: { type: integer }
+   *                   expiryYear: { type: integer }
+   *                   cvv: { type: string }
+   *     responses:
+   *       200: { description: Order placed }
+   *       400: { description: Invalid card or shipping }
+   *       402: { description: Payment declined }
+   *       403: { description: Invalid token }
+   *       404: { description: Order not found }
+   *       409: { description: Order not in checkout state }
+   */
+  router.post('/:orderId/checkout/place', (req, res) => orderController.placeOrder(req, res));
+
+  /**
+   * @swagger
+   * /order/{orderId}/checkout/cancel:
+   *   post:
+   *     summary: Cancel order (terminal)
+   *     tags: [Checkout]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: orderId
+   *         required: true
+   *         schema: { type: string }
+   *     responses:
+   *       200: { description: Order canceled }
+   *       403: { description: Invalid token }
+   *       404: { description: Order not found }
+   *       409: { description: Order cannot be canceled in current state }
+   */
+  router.post('/:orderId/checkout/cancel', (req, res) => orderController.cancelCheckout(req, res));
+
+  /**
+   * @swagger
    * /order/{orderId}:
    *   post:
    *     summary: Submit an order (change status to 'submited')

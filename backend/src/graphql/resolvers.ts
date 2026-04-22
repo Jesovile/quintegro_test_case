@@ -1,6 +1,8 @@
-import { OrderService } from '../services/orderService';
+import { OrderService, CheckoutResult } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { ShippingInfo } from '../types/entities';
+import { ChargeRequest } from '../services/paymentProvider';
 
 export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
   const extractUserIdFromToken = (context: any): string | null => {
@@ -11,12 +13,23 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
 
     const token = authHeader.substring(7);
     const decoded = authService.verifyToken(token);
-    
+
     if (!decoded || !decoded.userId) {
       return null;
     }
 
     return decoded.userId;
+  };
+
+  const unwrap = (result: CheckoutResult) => {
+    if (result.ok) return result.order;
+    throw new Error(result.message ? `${result.error}: ${result.message}` : result.error);
+  };
+
+  const requireUser = (context: any): string => {
+    const userId = extractUserIdFromToken(context);
+    if (!userId) throw new Error('Authentication required');
+    return userId;
   };
 
   return {
@@ -130,6 +143,34 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to delete product from order');
         }
+      },
+
+      startCheckout: async (_parent: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = requireUser(context);
+        return unwrap(await orderService.startCheckout(orderId, userId));
+      },
+
+      updateCheckout: async (
+        _parent: any,
+        { orderId, shipping }: { orderId: string; shipping: ShippingInfo },
+        context: any
+      ) => {
+        const userId = requireUser(context);
+        return unwrap(await orderService.updateCheckout(orderId, userId, { shipping }));
+      },
+
+      placeOrder: async (
+        _parent: any,
+        { orderId, card }: { orderId: string; card: ChargeRequest['card'] },
+        context: any
+      ) => {
+        const userId = requireUser(context);
+        return unwrap(await orderService.placeOrder(orderId, userId, card));
+      },
+
+      cancelCheckout: async (_parent: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = requireUser(context);
+        return unwrap(await orderService.cancelCheckout(orderId, userId));
       }
     }
   };

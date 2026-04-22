@@ -2,6 +2,13 @@ import { OrderRecord, OrderDTO, ProductRecord, ShippingInfo, CheckoutDraftInput 
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
 import { PaymentProvider, ChargeRequest } from './paymentProvider';
 
+export class LastProductError extends Error {
+  constructor() {
+    super('Cannot remove the last product from an order');
+    this.name = 'LastProductError';
+  }
+}
+
 export type CheckoutError =
   | 'ORDER_NOT_FOUND'
   | 'FORBIDDEN'
@@ -87,12 +94,15 @@ export class OrderService {
       return null;
     }
 
-    // Remove the product from the order
     const updatedProducts = order.products.filter(item => item.id !== productId);
-    
-    // If no products left, return null (order would be empty)
-    if (updatedProducts.length === 0) {
+
+    if (updatedProducts.length === order.products.length) {
+      // productId was not in order
       return null;
+    }
+
+    if (updatedProducts.length === 0) {
+      throw new LastProductError();
     }
 
     // Create updated order record
@@ -278,10 +288,7 @@ export class OrderService {
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
-    // Update the order in the in-memory repository
-    // This method should be called whenever order state changes
     this.orderRepository.update(updatedOrder);
-    console.log(`Order ${updatedOrder.orderId} updated in repository`);
   }
 
   private transformToDTO(order: OrderRecord): OrderDTO {

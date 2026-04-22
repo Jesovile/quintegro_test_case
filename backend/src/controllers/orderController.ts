@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { OrderService, CheckoutResult, CheckoutError } from '../services/orderService';
+import { OrderService, CheckoutResult, CheckoutError, LastProductError } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { ShippingInfo } from '../types/entities';
 
@@ -156,6 +156,9 @@ export class OrderController {
 
       return res.status(200).json(updatedOrder);
     } catch (error) {
+      if (error instanceof LastProductError) {
+        return res.status(409).json({ error: 'LAST_PRODUCT', message: error.message });
+      }
       console.error('Delete product from order error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }

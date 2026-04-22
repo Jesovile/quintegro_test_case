@@ -107,7 +107,9 @@ export class App {
       cors: false // We're already using CORS middleware
     });
 
-    console.log(`🚀 GraphQL server ready at http://localhost:3000${apolloServer.graphqlPath}`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`🚀 GraphQL server ready at http://localhost:3000${apolloServer.graphqlPath}`);
+    }
   }
 
   public listen(port: number): void {

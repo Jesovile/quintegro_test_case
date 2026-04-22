@@ -1,9 +1,11 @@
 import React from 'react'
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom'
+import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom'
 import MainLayout from './components/MainLayout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
-import OrderPage from './pages/OrderPage'
+import CurrentOrdersPage from './pages/CurrentOrdersPage'
+import OrderHistoryPage from './pages/OrderHistoryPage'
+import CheckoutPage from './pages/CheckoutPage'
 
 const App: React.FC = () => {
   return (
@@ -12,7 +14,10 @@ const App: React.FC = () => {
         <Switch>
           <Route exact path="/" component={HomePage} />
           <Route path="/login" component={LoginPage} />
-          <Route path="/order" component={OrderPage} />
+          <Route exact path="/order" render={() => <Redirect to="/order/current" />} />
+          <Route path="/order/current" component={CurrentOrdersPage} />
+          <Route path="/order/history" component={OrderHistoryPage} />
+          <Route path="/checkout/:orderId" component={CheckoutPage} />
         </Switch>
       </MainLayout>
     </Router>

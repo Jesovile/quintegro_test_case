@@ -4,6 +4,9 @@ export const ORDER_FIELDS = gql`
   fragment OrderFields on Order {
     orderId
     status
+    createAt
+    placedAt
+    canceledAt
     products {
       product {
         id
@@ -18,6 +21,19 @@ export const ORDER_FIELDS = gql`
       id
       discount
       dueDate
+    }
+    shipping {
+      fullName
+      address
+      city
+      zip
+      country
+      phone
+    }
+    payment {
+      brand
+      last4
+      holderName
     }
   }
 `;

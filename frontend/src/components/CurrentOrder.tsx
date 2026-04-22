@@ -1,33 +1,31 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useHistory } from 'react-router-dom'
+import { useQuery } from '@apollo/client'
+import { GET_ORDERS } from '../graphql/queries'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Order, isCurrent } from '../types/order'
 
 const CurrentOrder: React.FC = () => {
-  const [itemCount, setItemCount] = useState(0)
   const history = useHistory()
+  const isAuthenticated = !!localStorage.getItem('auth_token')
 
-  useEffect(() => {
-    // Initialize with stub data if not exists
-    const currentItems = localStorage.getItem('currentItems')
-    if (!currentItems) {
-      localStorage.setItem('currentItems', '10')
-      setItemCount(10)
-    } else {
-      setItemCount(parseInt(currentItems, 10))
-    }
-  }, [])
+  const { data } = useQuery<{ orders: Order[] }>(GET_ORDERS, {
+    skip: !isAuthenticated,
+    fetchPolicy: 'cache-and-network',
+    onError: () => {}
+  })
 
-  const handleClick = () => {
-    history.push('/order')
-  }
+  const itemCount = (data?.orders ?? [])
+    .filter(isCurrent)
+    .reduce((sum, o) => sum + o.products.reduce((s, p) => s + p.amount, 0), 0)
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={handleClick}
+      onClick={() => history.push('/order/current')}
       className="text-gray-700 hover:bg-gray-100 relative"
       title="Current Order"
     >

@@ -25,28 +25,57 @@ export interface ProductRecord {
   image: string;
 }
 
+export type OrderStatus = 'created' | 'checkout' | 'submited' | 'finished';
+
+export interface ShippingInfo {
+  fullName: string;
+  address: string;
+  city: string;
+  zip: string;
+  country: string;
+  phone: string;
+}
+
+export interface PaymentInfo {
+  brand: string;
+  last4: string;
+  holderName: string;
+}
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
+  placedAt?: number;
   products: Array<{
     id: string;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  shipping?: ShippingInfo;
+  payment?: PaymentInfo;
 }
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
+  createAt: number;
+  placedAt?: number;
   products: Array<{
     product: ProductRecord;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  shipping?: ShippingInfo;
+  payment?: PaymentInfo;
+}
+
+export interface CheckoutDraftInput {
+  shipping?: ShippingInfo;
+  payment?: PaymentInfo;
 }
 
 export interface PromoEntity {

@@ -183,7 +183,12 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      createAt: order.createAt,
+      placedAt: order.placedAt,
+      products: Array.from(uniqueProducts.values()),
+      promo: order.promo,
+      shipping: order.shipping,
+      payment: order.payment
     };
   }
 }

@@ -16,6 +16,7 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
+import { MockPaymentProvider } from './services/paymentProvider';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
 
 export class App {
@@ -26,8 +27,14 @@ export class App {
   private productRepository = new InMemoryProductRepository();
   private promoRepository = new InMemoryPromoRepository();
 
+  private paymentProvider = new MockPaymentProvider();
   private authService = new AuthService(this.authRepository, this.userRepository);
-  private orderService = new OrderService(this.orderRepository, this.productRepository, this.promoRepository);
+  private orderService = new OrderService(
+    this.orderRepository,
+    this.productRepository,
+    this.promoRepository,
+    this.paymentProvider
+  );
   private promoService = new PromoService(this.promoRepository);
 
   constructor() {

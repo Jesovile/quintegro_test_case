@@ -1,11 +1,34 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
+import { OrderRecord, OrderDTO, ProductRecord, ShippingInfo, CheckoutDraftInput } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+import { PaymentProvider, ChargeRequest } from './paymentProvider';
+
+export type CheckoutError =
+  | 'ORDER_NOT_FOUND'
+  | 'FORBIDDEN'
+  | 'INVALID_STATUS'
+  | 'INVALID_SHIPPING'
+  | 'MISSING_SHIPPING'
+  | 'PAYMENT_FAILED';
+
+export interface CheckoutFailure {
+  ok: false;
+  error: CheckoutError;
+  message?: string;
+}
+
+export interface CheckoutSuccess {
+  ok: true;
+  order: OrderDTO;
+}
+
+export type CheckoutResult = CheckoutSuccess | CheckoutFailure;
 
 export class OrderService {
   constructor(
     private orderRepository: IOrderRepository,
     private productRepository: IProductRepository,
-    private promoRepository: IPromoRepository
+    private promoRepository: IPromoRepository,
+    private paymentProvider: PaymentProvider
   ) {}
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
@@ -141,6 +164,111 @@ export class OrderService {
     // Update the in-memory repository
     this.updateOrder(updatedOrder);
     return true;
+  }
+
+  async startCheckout(orderId: string, userId: string): Promise<CheckoutResult> {
+    const order = this.orderRepository.findById(orderId);
+    if (!order) return { ok: false, error: 'ORDER_NOT_FOUND' };
+    if (order.userId !== userId) return { ok: false, error: 'FORBIDDEN' };
+    if (order.status !== 'created' && order.status !== 'checkout') {
+      return { ok: false, error: 'INVALID_STATUS', message: `Order is ${order.status}` };
+    }
+
+    if (order.status === 'created') {
+      const updated: OrderRecord = { ...order, status: 'checkout' };
+      this.updateOrder(updated);
+      return { ok: true, order: this.transformToDTO(updated) };
+    }
+
+    return { ok: true, order: this.transformToDTO(order) };
+  }
+
+  async updateCheckout(orderId: string, userId: string, draft: CheckoutDraftInput): Promise<CheckoutResult> {
+    const order = this.orderRepository.findById(orderId);
+    if (!order) return { ok: false, error: 'ORDER_NOT_FOUND' };
+    if (order.userId !== userId) return { ok: false, error: 'FORBIDDEN' };
+    if (order.status !== 'checkout') return { ok: false, error: 'INVALID_STATUS' };
+
+    if (draft.shipping && !this.isValidShipping(draft.shipping)) {
+      return { ok: false, error: 'INVALID_SHIPPING' };
+    }
+
+    const updated: OrderRecord = {
+      ...order,
+      shipping: draft.shipping ?? order.shipping,
+      payment: draft.payment ?? order.payment
+    };
+    this.updateOrder(updated);
+    return { ok: true, order: this.transformToDTO(updated) };
+  }
+
+  async cancelCheckout(orderId: string, userId: string): Promise<CheckoutResult> {
+    const order = this.orderRepository.findById(orderId);
+    if (!order) return { ok: false, error: 'ORDER_NOT_FOUND' };
+    if (order.userId !== userId) return { ok: false, error: 'FORBIDDEN' };
+    if (order.status !== 'checkout') return { ok: false, error: 'INVALID_STATUS' };
+
+    const updated: OrderRecord = { ...order, status: 'created' };
+    this.updateOrder(updated);
+    return { ok: true, order: this.transformToDTO(updated) };
+  }
+
+  async placeOrder(
+    orderId: string,
+    userId: string,
+    card: ChargeRequest['card']
+  ): Promise<CheckoutResult> {
+    const order = this.orderRepository.findById(orderId);
+    if (!order) return { ok: false, error: 'ORDER_NOT_FOUND' };
+    if (order.userId !== userId) return { ok: false, error: 'FORBIDDEN' };
+    if (order.status !== 'checkout') return { ok: false, error: 'INVALID_STATUS' };
+    if (!order.shipping || !this.isValidShipping(order.shipping)) {
+      return { ok: false, error: 'MISSING_SHIPPING' };
+    }
+
+    const amount = this.calculateOrderSum(order.products);
+    const charge = await this.paymentProvider.charge({
+      amount,
+      currency: 'USD',
+      card
+    });
+
+    if (!charge.ok) {
+      return { ok: false, error: 'PAYMENT_FAILED', message: charge.error };
+    }
+
+    const digits = card.number.replace(/\s+/g, '');
+    const updated: OrderRecord = {
+      ...order,
+      status: 'submited',
+      placedAt: Date.now(),
+      payment: {
+        brand: this.detectBrand(digits),
+        last4: digits.slice(-4),
+        holderName: card.holderName
+      }
+    };
+    this.updateOrder(updated);
+    return { ok: true, order: this.transformToDTO(updated) };
+  }
+
+  private isValidShipping(s: ShippingInfo): boolean {
+    return Boolean(
+      s.fullName?.trim() &&
+      s.address?.trim() &&
+      s.city?.trim() &&
+      s.zip?.trim() &&
+      s.country?.trim() &&
+      s.phone?.trim()
+    );
+  }
+
+  private detectBrand(digits: string): string {
+    if (/^4/.test(digits)) return 'visa';
+    if (/^(5[1-5]|2[2-7])/.test(digits)) return 'mastercard';
+    if (/^3[47]/.test(digits)) return 'amex';
+    if (/^6(?:011|5)/.test(digits)) return 'discover';
+    return 'card';
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {

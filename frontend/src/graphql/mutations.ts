@@ -23,3 +23,39 @@ export const DELETE_PRODUCT_FROM_ORDER = gql`
   }
   ${ORDER_FIELDS}
 `;
+
+export const START_CHECKOUT = gql`
+  mutation StartCheckout($orderId: ID!) {
+    startCheckout(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+  ${ORDER_FIELDS}
+`;
+
+export const UPDATE_CHECKOUT = gql`
+  mutation UpdateCheckout($orderId: ID!, $shipping: ShippingInput!) {
+    updateCheckout(orderId: $orderId, shipping: $shipping) {
+      ...OrderFields
+    }
+  }
+  ${ORDER_FIELDS}
+`;
+
+export const PLACE_ORDER = gql`
+  mutation PlaceOrder($orderId: ID!, $card: CardInput!) {
+    placeOrder(orderId: $orderId, card: $card) {
+      ...OrderFields
+    }
+  }
+  ${ORDER_FIELDS}
+`;
+
+export const CANCEL_CHECKOUT = gql`
+  mutation CancelCheckout($orderId: ID!) {
+    cancelCheckout(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+  ${ORDER_FIELDS}
+`;

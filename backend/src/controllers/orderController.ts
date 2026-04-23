@@ -13,6 +13,21 @@ interface OrderSumRequest {
   promo?: string;
 }
 
+interface SubmitOrderRequest {
+  deliveryType: 'standard' | 'express';
+  shippingAddress: string;
+  paymentMethod: 'card' | 'paypal';
+  currency: 'USD';
+  deliveryCost: number;
+}
+
+interface CardPaymentRequest {
+  cardNumber: string;
+  cardHolder: string;
+  expiryDate: string;
+  cvv: string;
+}
+
 export class OrderController {
   constructor(
     private orderService: OrderService,
@@ -142,12 +157,27 @@ export class OrderController {
       }
 
       const { orderId } = req.params;
+      const { deliveryType, shippingAddress, paymentMethod, currency, deliveryCost } = req.body as SubmitOrderRequest;
 
       if (!orderId) {
         return res.status(400).json({ error: 'Order ID is required' });
       }
 
-      const success = await this.orderService.submitOrder(orderId, userId);
+      if (!deliveryType || !shippingAddress || !paymentMethod) {
+        return res.status(400).json({ error: 'deliveryType, shippingAddress and paymentMethod are required' });
+      }
+
+      const success = await this.orderService.submitOrder(
+        {
+          orderId,
+          deliveryType,
+          shippingAddress,
+          paymentMethod,
+          currency,
+          deliveryCost
+        },
+        userId
+      );
 
       if (!success) {
         return res.status(404).json({ error: 'Order not found or access denied' });
@@ -156,6 +186,38 @@ export class OrderController {
       return res.status(200).send();
     } catch (error) {
       console.error('Submit order error:', error);
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  async processPayment(req: Request, res: Response) {
+    try {
+      const userId = this.extractUserIdFromToken(req);
+      if (!userId) {
+        return res.status(403).json({ error: 'Invalid or missing authentication token' });
+      }
+
+      const { orderId } = req.params;
+      const paymentInput = req.body as CardPaymentRequest | undefined;
+
+      if (!orderId) {
+        return res.status(400).json({ error: 'Order ID is required' });
+      }
+
+      const success = await this.orderService.processPayment(orderId, userId, paymentInput);
+      if (!success) {
+        return res.status(404).json({ error: 'Order not found or access denied' });
+      }
+
+      return res.status(200).json(true);
+    } catch (error) {
+      console.error('Process payment error:', error);
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

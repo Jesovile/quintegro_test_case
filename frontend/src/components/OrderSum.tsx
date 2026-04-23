@@ -19,9 +19,10 @@ interface OrderItem {
 interface OrderSumProps {
   orderId: string
   products: OrderItem[]
+  deliveryCost: number
 }
 
-const OrderSum: React.FC<OrderSumProps> = ({ orderId, products }) => {
+const OrderSum: React.FC<OrderSumProps> = ({ orderId, products, deliveryCost }) => {
   // Prepare products data for the GraphQL query
   const productsData = products.map(item => ({
     id: item.product.id,
@@ -61,11 +62,15 @@ const OrderSum: React.FC<OrderSumProps> = ({ orderId, products }) => {
     )
   }
 
+  const subtotal = data?.orderSum || 0
+  const total = subtotal + deliveryCost
+
   return (
     <div className="bg-blue-600 text-white p-6 mt-6 rounded-lg shadow-md">
-      <h3 className="text-xl font-bold">
-        Order Total: ${data?.orderSum?.toFixed(2) || '0.00'}
-      </h3>
+      <h3 className="text-xl font-bold mb-3">Order total (USD)</h3>
+      <p className="text-sm">Subtotal: ${subtotal.toFixed(2)}</p>
+      <p className="text-sm">Delivery: ${deliveryCost.toFixed(2)}</p>
+      <p className="text-lg font-semibold mt-2">Grand total: ${total.toFixed(2)}</p>
     </div>
   )
 }

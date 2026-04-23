@@ -328,6 +328,7 @@ export function createOrderRoutes(orderController: OrderController): Router {
    *                   example: "Internal server error"
    */
   router.post('/:orderId', (req, res) => orderController.submitOrder(req, res));
+  router.post('/:orderId/payment', (req, res) => orderController.processPayment(req, res));
 
   return router;
 }

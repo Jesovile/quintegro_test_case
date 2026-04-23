@@ -95,6 +95,12 @@ export class InMemoryOrderRepository implements IOrderRepository {
       userId: "user-1",
       status: "finished",
       createAt: Date.now() - 86400000, // 1 day ago
+      deliveryType: "standard",
+      shippingAddress: "221B Baker Street, London",
+      paymentMethod: "paypal",
+      currency: "USD",
+      deliveryCost: 5,
+      totalCost: 1704.97,
       products: [
         { id: "product-1", amount: 1, price: 1299.99 },
         { id: "product-3", amount: 2, price: 199.99 }
@@ -105,6 +111,12 @@ export class InMemoryOrderRepository implements IOrderRepository {
       userId: "user-1",
       status: "created",
       createAt: Date.now(),
+      deliveryType: "standard",
+      shippingAddress: "742 Evergreen Terrace, Springfield",
+      paymentMethod: "card",
+      currency: "USD",
+      deliveryCost: 5,
+      totalCost: 1504.98,
       products: [
         { id: "product-2", amount: 1, price: 899.99 },
         { id: "product-4", amount: 1, price: 599.99 }
@@ -119,6 +131,12 @@ export class InMemoryOrderRepository implements IOrderRepository {
         userId: "user-1",
         status: "finished",
         createAt: Date.now() - 86400000,
+        deliveryType: "standard",
+        shippingAddress: "221B Baker Street, London",
+        paymentMethod: "paypal",
+        currency: "USD",
+        deliveryCost: 5,
+        totalCost: 1704.97,
         products: [
           { id: "product-1", amount: 1, price: 1299.99 },
           { id: "product-3", amount: 2, price: 199.99 }
@@ -129,6 +147,12 @@ export class InMemoryOrderRepository implements IOrderRepository {
         userId: "user-1",
         status: "created",
         createAt: Date.now(),
+        deliveryType: "standard",
+        shippingAddress: "742 Evergreen Terrace, Springfield",
+        paymentMethod: "card",
+        currency: "USD",
+        deliveryCost: 5,
+        totalCost: 1504.98,
         products: [
           { id: "product-2", amount: 1, price: 899.99 },
           { id: "product-4", amount: 1, price: 599.99 }

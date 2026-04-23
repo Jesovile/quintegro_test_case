@@ -3,6 +3,24 @@ import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
 
 export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+  type SubmitOrderArgs = {
+    orderId: string;
+    deliveryType: 'standard' | 'express';
+    shippingAddress: string;
+    paymentMethod: 'card' | 'paypal';
+    currency: 'USD';
+    deliveryCost: number;
+  };
+  type ProcessPaymentArgs = {
+    orderId: string;
+    input?: {
+      cardNumber: string;
+      cardHolder: string;
+      expiryDate: string;
+      cvv: string;
+    };
+  };
+
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -98,20 +116,43 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+      submitOrder: async (parent: any, args: SubmitOrderArgs, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {
           throw new Error('Authentication required');
         }
 
         try {
-          const success = await orderService.submitOrder(orderId, userId);
+          const success = await orderService.submitOrder(args, userId);
           if (!success) {
             throw new Error('Order not found or access denied');
           }
           return success;
         } catch (error) {
+          if (error instanceof Error) {
+            throw new Error(error.message);
+          }
           throw new Error('Failed to submit order');
+        }
+      },
+
+      processPayment: async (parent: any, { orderId, input }: ProcessPaymentArgs, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        try {
+          const success = await orderService.processPayment(orderId, userId, input);
+          if (!success) {
+            throw new Error('Order not found or access denied');
+          }
+          return success;
+        } catch (error) {
+          if (error instanceof Error) {
+            throw new Error(error.message);
+          }
+          throw new Error('Failed to process payment');
         }
       },
 

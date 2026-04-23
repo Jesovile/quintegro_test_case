@@ -36,6 +36,12 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryType?: 'standard' | 'express';
+  shippingAddress?: string;
+  paymentMethod?: 'card' | 'paypal';
+  currency?: 'USD';
+  deliveryCost?: number;
+  totalCost?: number;
 }
 
 export interface OrderDTO {
@@ -47,6 +53,12 @@ export interface OrderDTO {
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryType?: 'standard' | 'express';
+  shippingAddress?: string;
+  paymentMethod?: 'card' | 'paypal';
+  currency?: 'USD';
+  deliveryCost?: number;
+  totalCost?: number;
 }
 
 export interface PromoEntity {

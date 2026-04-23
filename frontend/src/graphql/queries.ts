@@ -6,6 +6,12 @@ export const GET_ORDERS = gql`
     orders {
       orderId
       status
+      deliveryType
+      shippingAddress
+      paymentMethod
+      currency
+      deliveryCost
+      totalCost
       products {
         product {
           id
@@ -31,6 +37,12 @@ export const GET_ORDER = gql`
     order(orderId: $orderId) {
       orderId
       status
+      deliveryType
+      shippingAddress
+      paymentMethod
+      currency
+      deliveryCost
+      totalCost
       products {
         product {
           id

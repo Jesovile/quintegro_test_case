@@ -11,8 +11,28 @@ export const LOGIN = gql`
 
 // Mutation to submit an order
 export const SUBMIT_ORDER = gql`
-  mutation SubmitOrder($orderId: ID!) {
-    submitOrder(orderId: $orderId)
+  mutation SubmitOrder(
+    $orderId: ID!
+    $deliveryType: DeliveryType!
+    $shippingAddress: String!
+    $paymentMethod: PaymentMethod!
+    $currency: Currency!
+    $deliveryCost: Float!
+  ) {
+    submitOrder(
+      orderId: $orderId
+      deliveryType: $deliveryType
+      shippingAddress: $shippingAddress
+      paymentMethod: $paymentMethod
+      currency: $currency
+      deliveryCost: $deliveryCost
+    )
+  }
+`;
+
+export const PROCESS_PAYMENT = gql`
+  mutation ProcessPayment($orderId: ID!, $input: CardPaymentInput) {
+    processPayment(orderId: $orderId, input: $input)
   }
 `;
 

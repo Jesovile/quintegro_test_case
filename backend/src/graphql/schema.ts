@@ -25,12 +25,32 @@ export const typeDefs = gql`
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    deliveryType: DeliveryType
+    shippingAddress: String
+    paymentMethod: PaymentMethod
+    currency: Currency
+    deliveryCost: Float
+    totalCost: Float
   }
 
   enum OrderStatus {
     created
     submited
     finished
+  }
+
+  enum DeliveryType {
+    standard
+    express
+  }
+
+  enum PaymentMethod {
+    card
+    paypal
+  }
+
+  enum Currency {
+    USD
   }
 
   input ProductInput {
@@ -42,6 +62,13 @@ export const typeDefs = gql`
   input LoginInput {
     login: String!
     password: String!
+  }
+
+  input CardPaymentInput {
+    cardNumber: String!
+    cardHolder: String!
+    expiryDate: String!
+    cvv: String!
   }
 
   type LoginResponse {
@@ -57,7 +84,15 @@ export const typeDefs = gql`
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
+    submitOrder(
+      orderId: ID!
+      deliveryType: DeliveryType!
+      shippingAddress: String!
+      paymentMethod: PaymentMethod!
+      currency: Currency!
+      deliveryCost: Float!
+    ): Boolean!
+    processPayment(orderId: ID!, input: CardPaymentInput): Boolean!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
   }
 `;

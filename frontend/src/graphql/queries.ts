@@ -46,6 +46,36 @@ export const GET_ORDER = gql`
         discount
         dueDate
       }
+      deliveryAddress {
+        fullName
+        phone
+        country
+        state
+        city
+        postalCode
+        street
+        apartment
+      }
+      invoiceAddress {
+        fullName
+        phone
+        country
+        state
+        city
+        postalCode
+        street
+        apartment
+      }
+      deliveryOption
+      deliveryCost
+      payment {
+        last4
+        cardholder
+        expMonth
+        expYear
+        bankTxnId
+        status
+      }
     }
   }
 `;
@@ -64,6 +94,32 @@ export const GET_PROMO = gql`
       id
       discount
       dueDate
+    }
+  }
+`;
+
+// Query the mocked Google address service for autocomplete suggestions.
+export const SEARCH_ADDRESSES = gql`
+  query SearchAddresses($query: String!) {
+    searchAddresses(query: $query) {
+      id
+      description
+      country
+      state
+      city
+      postalCode
+      street
+    }
+  }
+`;
+
+// Fetch the three delivery rates for a given verified address.
+export const DELIVERY_RATES = gql`
+  query DeliveryRates($address: AddressInput!) {
+    deliveryRates(address: $address) {
+      fast
+      super_fast
+      extra_fast
     }
   }
 `;

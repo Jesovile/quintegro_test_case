@@ -1,72 +1,84 @@
-import React, { useState } from 'react'
-import { Plus, Minus, Trash2 } from 'lucide-react'
-import { useMutation } from '@apollo/client'
-import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import React, { useState } from "react";
+import { Plus, Minus, Trash2 } from "lucide-react";
+import { useMutation } from "@apollo/client";
+import { useHistory } from "react-router-dom";
+import { DELETE_PRODUCT_FROM_ORDER } from "../graphql/mutations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface OrderListItemProps {
   product: {
-    id: string
-    title: string
-    description: string
-    image: string
-  }
-  amount: number
-  price: number
-  orderId: string
-  onAmountChange: (productId: string, newAmount: number) => void
-  onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+  };
+  amount: number;
+  price: number;
+  orderId: string;
+  onAmountChange: (productId: string, newAmount: number) => void;
+  onDelete: (productId: string) => void;
+  onSubmitOrder?: (orderId: string) => void;
   status: string;
   isLast: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
-  const [currentAmount, setCurrentAmount] = useState(amount)
+const OrderListItem: React.FC<OrderListItemProps> = ({
+  product,
+  amount,
+  price,
+  orderId,
+  onAmountChange,
+  onDelete,
+  onSubmitOrder,
+  status,
+  isLast,
+}) => {
+  const history = useHistory();
+  const [currentAmount, setCurrentAmount] = useState(amount);
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
-      onDelete(product.id)
+      onDelete(product.id);
     },
     onError: (error) => {
-      console.error('Failed to delete product:', error)
-    }
-  })
+      console.error("Failed to delete product:", error);
+    },
+  });
 
   const handleAmountChange = (newAmount: number) => {
-    const clampedAmount = Math.max(1, Math.min(10, newAmount))
-    setCurrentAmount(clampedAmount)
-    onAmountChange(product.id, clampedAmount)
-  }
+    const clampedAmount = Math.max(1, Math.min(10, newAmount));
+    setCurrentAmount(clampedAmount);
+    onAmountChange(product.id, clampedAmount);
+  };
 
   const handleIncrement = () => {
-    handleAmountChange(currentAmount + 1)
-  }
+    handleAmountChange(currentAmount + 1);
+  };
 
   const handleDecrement = () => {
-    handleAmountChange(currentAmount - 1)
-  }
+    handleAmountChange(currentAmount - 1);
+  };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
-    handleAmountChange(value)
-  }
+    handleAmountChange(value);
+  };
 
   const handleDelete = async () => {
     try {
       await deleteProduct({
         variables: {
           orderId,
-          productId: product.id
-        }
-      })
+          productId: product.id,
+        },
+      });
     } catch (error) {
-      console.error('Error deleting product:', error)
+      console.error("Error deleting product:", error);
     }
-  }
+  };
 
   return (
     <div>
@@ -83,9 +95,7 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
               <h3 className="text-lg font-semibold mb-2 transition-colors duration-300 hover:text-blue-600 text-gray-900">
                 {product.title}
               </h3>
-              <p className="text-sm text-gray-600">
-                {product.description}
-              </p>
+              <p className="text-sm text-gray-600">{product.description}</p>
             </div>
             <div className="flex flex-col items-end gap-3">
               <p className="text-lg font-bold text-blue-600">
@@ -131,18 +141,18 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
+      {isLast && status === "created" && onSubmitOrder && (
         <div className="mt-6 flex justify-end">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
+            onClick={() => history.push(`/checkout/${orderId}/delivery`)}
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
-            Submit Order
+            Checkout
           </Button>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default OrderListItem
+export default OrderListItem;

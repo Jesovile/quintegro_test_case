@@ -25,10 +25,34 @@ export interface ProductRecord {
   image: string;
 }
 
+export type OrderStatus = 'created' | 'submited' | 'processing' | 'finished';
+
+export type DeliveryOption = 'fast' | 'super_fast' | 'extra_fast';
+
+export interface Address {
+  fullName: string;
+  phone: string;
+  country: string;
+  state: string;
+  city: string;
+  postalCode: string;
+  street: string;
+  apartment?: string;
+}
+
+export interface PaymentSummary {
+  last4: string;
+  cardholder: string;
+  expMonth: number;
+  expYear: number;
+  bankTxnId: string;
+  status: 'processing' | 'authorized' | 'declined';
+}
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
   products: Array<{
     id: string;
@@ -36,17 +60,27 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryAddress?: Address;
+  invoiceAddress?: Address;
+  deliveryOption?: DeliveryOption;
+  deliveryCost?: number;
+  payment?: PaymentSummary;
 }
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   products: Array<{
     product: ProductRecord;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryAddress?: Address;
+  invoiceAddress?: Address;
+  deliveryOption?: DeliveryOption;
+  deliveryCost?: number;
+  payment?: PaymentSummary;
 }
 
 export interface PromoEntity {

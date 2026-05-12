@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './config/swagger';
 import { delayMiddleware } from './middleware/delayMiddleware';
-import { errorTestMiddleware } from './middleware/errorTestMiddleware';
 import { createApolloServer } from './graphql/server';
 import { createAuthRoutes } from './routes/authRoutes';
 import { createOrderRoutes } from './routes/orderRoutes';
@@ -17,6 +16,8 @@ import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { MockGoogleAddressService } from './services/mockGoogleAddressService';
+import { MockBankService } from './services/mockBankService';
 
 export class App {
   public app: express.Application;
@@ -38,10 +39,7 @@ export class App {
     
     // Add delay to all API requests
     this.app.use(delayMiddleware(1500));
-    
-    // Add error test middleware (returns 500 on every 3rd request)
-    this.app.use(errorTestMiddleware);
-    
+
     // Serve static files for product images
     this.app.use('/productImg', express.static('public/productImg'));
   }
@@ -105,13 +103,22 @@ export class App {
     const promoRepository = new InMemoryPromoRepository();
     this.orderRepositories.push(orderRepository);
 
-    // Initialize services
+    // Initialize services — share the mock Google service between order and
+    // resolver layers so the rates shown to the user match the rates charged.
+    const addressService = new MockGoogleAddressService();
+    const bankService = new MockBankService();
     const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
+    const orderService = new OrderService(
+      orderRepository,
+      productRepository,
+      promoRepository,
+      bankService,
+      addressService
+    );
     const promoService = new PromoService(promoRepository);
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, addressService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

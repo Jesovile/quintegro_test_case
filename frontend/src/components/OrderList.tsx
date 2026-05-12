@@ -21,7 +21,7 @@ interface OrderItem {
 
 interface Order {
   orderId: string
-  status: 'created' | 'submited' | 'finished'
+  status: 'created' | 'submited' | 'processing' | 'finished'
   products: OrderItem[]
 }
 
@@ -29,6 +29,8 @@ const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
 
   const { loading, error, refetch } = useQuery(GET_ORDERS, {
+    fetchPolicy: 'cache-and-network',
+    nextFetchPolicy: 'cache-first',
     onCompleted: (data) => {
       setOrders(data.orders || [])
     },

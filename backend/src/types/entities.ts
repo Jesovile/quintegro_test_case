@@ -28,8 +28,8 @@ export interface ProductRecord {
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
   createAt: number;
+  submitedAt?: number;
   products: Array<{
     id: string;
     amount: number;
@@ -47,6 +47,13 @@ export interface OrderDTO {
     price: number;
   }>;
   promo?: PromoEntity;
+}
+
+export interface PaymentInfo {
+  orderId: string;
+  phone: string;
+  address: string;
+  email: string;
 }
 
 export interface PromoEntity {

@@ -16,6 +16,13 @@ export const SUBMIT_ORDER = gql`
   }
 `;
 
+// Mutation to submit payment info for an order
+export const SUBMIT_PAYMENT_INFO = gql`
+  mutation SubmitPaymentInfo($input: PaymentInfoInput!) {
+    submitPaymentInfo(input: $input)
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER = gql`
   mutation DeleteProductFromOrder($orderId: ID!, $productId: ID!) {

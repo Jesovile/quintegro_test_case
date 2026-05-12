@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import {useHistory} from "react-router-dom";
 
 interface OrderListItemProps {
   product: {
@@ -26,6 +27,7 @@ interface OrderListItemProps {
 
 const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
+  const history = useHistory()
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
@@ -141,6 +143,18 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </Button>
         </div>
       )}
+      {isLast && status === 'submited' && (
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={() => history.push(`/checkout/${orderId}`)}
+            className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          >
+            Checkout
+          </Button>
+        </div>
+      )}
+
+
     </div>
   )
 }

@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
+import { useHistory } from 'react-router-dom'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
 import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
@@ -27,6 +28,8 @@ interface Order {
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
+  const history = useHistory()
+  const pendingOrderId = useRef<string | null>(null)
 
   const { loading, error, refetch } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
@@ -39,10 +42,16 @@ const OrderList: React.FC = () => {
 
   const [submitOrder] = useMutation(SUBMIT_ORDER, {
     onCompleted: () => {
-      refetch()
+      if (pendingOrderId.current) {
+        history.push(`/checkout/${pendingOrderId.current}`)
+        pendingOrderId.current = null
+      } else {
+        refetch()
+      }
     },
     onError: (error) => {
       console.error('Failed to submit order:', error)
+      pendingOrderId.current = null
     }
   })
 
@@ -86,11 +95,13 @@ const OrderList: React.FC = () => {
 
   const handleSubmitOrder = async (orderId: string) => {
     try {
+      pendingOrderId.current = orderId
       await submitOrder({
         variables: { orderId }
       })
     } catch (error) {
       console.error('Error submitting order:', error)
+      pendingOrderId.current = null
     }
   }
 

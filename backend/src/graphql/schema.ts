@@ -44,6 +44,13 @@ export const typeDefs = gql`
     password: String!
   }
 
+  input PaymentInfoInput {
+    orderId: ID!
+    phone: String!
+    address: String!
+    email: String!
+  }
+
   type LoginResponse {
     token: String!
   }
@@ -59,5 +66,6 @@ export const typeDefs = gql`
     login(input: LoginInput!): LoginResponse!
     submitOrder(orderId: ID!): Boolean!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
+    submitPaymentInfo(input: PaymentInfoInput!): Boolean!
   }
 `;

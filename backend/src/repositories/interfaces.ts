@@ -27,3 +27,5 @@ export interface IPromoRepository {
   findById(id: string): PromoEntity | undefined;
   findAll(): PromoEntity[];
 }
+
+export { ICheckoutRepository } from './checkoutRepository';

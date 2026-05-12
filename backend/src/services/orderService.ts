@@ -1,11 +1,13 @@
 import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+import { ICheckoutRepository } from '../repositories/checkoutRepository';
 
 export class OrderService {
   constructor(
     private orderRepository: IOrderRepository,
     private productRepository: IProductRepository,
-    private promoRepository: IPromoRepository
+    private promoRepository: IPromoRepository,
+    private checkoutRepository: ICheckoutRepository
   ) {}
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
@@ -127,18 +129,16 @@ export class OrderService {
       return false;
     }
 
-    // Check if order is in 'created' status
-    if (order.status !== 'created') {
+    // Already submitted
+    if (order.submitedAt !== undefined) {
       return false;
     }
 
-    // Update order status to 'submited'
     const updatedOrder: OrderRecord = {
       ...order,
-      status: 'submited'
+      submitedAt: Date.now()
     };
 
-    // Update the in-memory repository
     this.updateOrder(updatedOrder);
     return true;
   }
@@ -180,9 +180,19 @@ export class OrderService {
       }
     });
 
+    const hasPaymentInfo = !!this.checkoutRepository.findByOrderId(order.orderId);
+    let status: 'created' | 'submited' | 'finished';
+    if (hasPaymentInfo) {
+      status = 'finished';
+    } else if (order.submitedAt !== undefined) {
+      status = 'submited';
+    } else {
+      status = 'created';
+    }
+
     return {
       orderId: order.orderId,
-      status: order.status,
+      status,
       products: Array.from(uniqueProducts.values())
     };
   }

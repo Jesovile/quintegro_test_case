@@ -16,7 +16,9 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
+import { CheckoutService } from './services/checkoutService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { InMemoryCheckoutRepository } from './repositories/checkoutRepository';
 
 export class App {
   public app: express.Application;
@@ -53,11 +55,12 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
+    const checkoutRepository = new InMemoryCheckoutRepository();
     this.orderRepositories.push(orderRepository);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
+    const orderService = new OrderService(orderRepository, productRepository, promoRepository, checkoutRepository);
     const promoService = new PromoService(promoRepository);
 
     // Initialize controllers
@@ -103,15 +106,17 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
+    const checkoutRepository = new InMemoryCheckoutRepository();
     this.orderRepositories.push(orderRepository);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
+    const orderService = new OrderService(orderRepository, productRepository, promoRepository, checkoutRepository);
     const promoService = new PromoService(promoRepository);
+    const checkoutService = new CheckoutService(checkoutRepository, orderRepository);
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, checkoutService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

@@ -1,8 +1,9 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { CheckoutService } from '../services/checkoutService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService, checkoutService: CheckoutService) => {
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -130,6 +131,25 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to delete product from order');
         }
+      },
+
+      submitPaymentInfo: async (parent: any, { input }: { input: { orderId: string; phone: string; address: string; email: string } }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        const result = checkoutService.submitPaymentInfo(input.orderId, userId, {
+          phone: input.phone,
+          address: input.address,
+          email: input.email,
+        });
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        return true;
       }
     }
   };

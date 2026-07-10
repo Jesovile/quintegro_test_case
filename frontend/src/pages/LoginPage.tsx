@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useHistory } from 'react-router-dom'
+import { useHistory, useLocation } from 'react-router-dom'
 import { useMutation } from '@apollo/client'
 import { LOGIN } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
@@ -11,11 +11,12 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const history = useHistory()
+  const location = useLocation<{ from?: string } | undefined>()
 
   const [loginMutation, { loading: isLoading }] = useMutation(LOGIN, {
     onCompleted: (data) => {
       localStorage.setItem('auth_token', data.login.token)
-      history.push('/')
+      history.push(location.state?.from ?? '/')
     },
     onError: (error) => {
       setError(error.message || 'An error occurred. Please try again.')

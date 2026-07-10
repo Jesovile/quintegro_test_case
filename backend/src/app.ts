@@ -16,14 +16,51 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
-import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { PaymentService } from './services/paymentService';
+import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository, InMemoryDeliveryMethodRepository, InMemoryPaymentRepository } from './repositories/implementations';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  private resettableRepositories: Array<{ reset(): void }> = [];
+
+  private userRepository: InMemoryUserRepository;
+  private authRepository: InMemoryAuthRepository;
+  private orderRepository: InMemoryOrderRepository;
+  private productRepository: InMemoryProductRepository;
+  private promoRepository: InMemoryPromoRepository;
+  private deliveryMethodRepository: InMemoryDeliveryMethodRepository;
+  private paymentRepository: InMemoryPaymentRepository;
+
+  private authService: AuthService;
+  private orderService: OrderService;
+  private promoService: PromoService;
+  private paymentService: PaymentService;
 
   constructor() {
     this.app = express();
+
+    // Initialize repositories exactly once, shared between REST and GraphQL
+    this.userRepository = new InMemoryUserRepository();
+    this.authRepository = new InMemoryAuthRepository();
+    this.orderRepository = new InMemoryOrderRepository();
+    this.productRepository = new InMemoryProductRepository();
+    this.promoRepository = new InMemoryPromoRepository();
+    this.deliveryMethodRepository = new InMemoryDeliveryMethodRepository();
+    this.paymentRepository = new InMemoryPaymentRepository();
+    this.resettableRepositories.push(this.orderRepository, this.paymentRepository);
+
+    // Initialize services exactly once, shared between REST and GraphQL
+    this.authService = new AuthService(this.authRepository, this.userRepository);
+    this.orderService = new OrderService(this.orderRepository, this.productRepository, this.promoRepository, this.deliveryMethodRepository);
+    this.promoService = new PromoService(this.promoRepository);
+    this.paymentService = new PaymentService(this.paymentRepository, this.orderRepository, this.orderService);
+    // Setter injection to avoid a circular constructor dependency (feature 5,
+    // closing the gap flagged by feature 4 — see orderService.ts's
+    // setPaymentService doc comment): OrderService.transformToDTO needs
+    // PaymentService.getSummaryForOrder to populate OrderDTO.payment for
+    // order history / confirmation display.
+    this.orderService.setPaymentService(this.paymentService);
+
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeSwagger();
@@ -47,29 +84,17 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
-    // Initialize controllers
-    const authController = new AuthController(authService);
-    const orderController = new OrderController(orderService, authService);
-    const promoController = new PromoController(promoService);
+    // Initialize controllers (repositories/services are constructed once in the
+    // App constructor and shared with GraphQL, see initializeGraphQL())
+    const authController = new AuthController(this.authService);
+    const orderController = new OrderController(this.orderService, this.authService);
+    const promoController = new PromoController(this.promoService);
 
     // Setup routes
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(this.resettableRepositories));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -97,21 +122,12 @@ export class App {
   }
 
   private async initializeGraphQL(): Promise<void> {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
+    // Reuses the same repository/service instances constructed in the App
+    // constructor and used by initializeRoutes(), so REST and GraphQL never
+    // see divergent data.
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(this.orderService, this.authService, this.promoService, this.deliveryMethodRepository, this.paymentService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Minus, Trash2 } from 'lucide-react'
+import { useHistory } from 'react-router-dom'
 import { useMutation } from '@apollo/client'
 import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
@@ -17,19 +18,23 @@ interface OrderListItemProps {
   amount: number
   price: number
   orderId: string
-  onAmountChange: (productId: string, newAmount: number) => void
-  onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
-  status: string;
+  onAmountChange: (orderId: string, productId: string, newAmount: number) => void
+  onDelete: (orderId: string, productId: string) => void
+  // Feature 5 (implementation-plan-05.md iteration 5.2): OrderList.tsx now
+  // only ever mounts this component for status === 'created' orders — the
+  // read-only paid/cancelled/etc. path is handled by the new
+  // OrderHistoryItem.tsx instead. Narrowed to the single reachable value.
+  status: 'created';
   isLast: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
+const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
+  const history = useHistory()
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
-      onDelete(product.id)
+      onDelete(orderId, product.id)
     },
     onError: (error) => {
       console.error('Failed to delete product:', error)
@@ -39,7 +44,7 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
   const handleAmountChange = (newAmount: number) => {
     const clampedAmount = Math.max(1, Math.min(10, newAmount))
     setCurrentAmount(clampedAmount)
-    onAmountChange(product.id, clampedAmount)
+    onAmountChange(orderId, product.id, clampedAmount)
   }
 
   const handleIncrement = () => {
@@ -131,13 +136,13 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
+      {isLast && status === 'created' && (
         <div className="mt-6 flex justify-end">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
+            onClick={() => history.push('/checkout/address')}
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
-            Submit Order
+            Proceed to Checkout
           </Button>
         </div>
       )}

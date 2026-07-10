@@ -17,13 +17,30 @@ const authLink = setContext((_, { headers }) => {
   }
 });
 
+// `client.ts` has no React Router context (it's constructed outside any
+// component tree), so an expired/invalid JWT is handled with a hard
+// `window.location` redirect rather than `history.push`. This intentionally
+// keeps the module framework-agnostic; it fires for BOTH query and mutation
+// errors since both live behind the same errorLink (tech-design §4.1 — a
+// `currentCart` query failing on an expired token needs the same treatment
+// as a failing mutation, not just mutation-specific handling).
 const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors)
+  if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.log(
         `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
       )
     );
+
+    const hasAuthError = graphQLErrors.some(
+      ({ message }) => message === 'Authentication required'
+    );
+
+    if (hasAuthError) {
+      localStorage.removeItem('auth_token');
+      window.location.href = '/runtime/login';
+    }
+  }
   if (networkError) console.log(`[Network error]: ${networkError}`);
 });
 

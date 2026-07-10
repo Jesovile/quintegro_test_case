@@ -1,5 +1,5 @@
-import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
-import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
+import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity, DeliveryMethodOption, DeliveryMethodType, PaymentRecord } from '../types/entities';
+import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository, IDeliveryMethodRepository, IPaymentRepository } from './interfaces';
 
 export class InMemoryUserRepository implements IUserRepository {
   private users: UserRecord[] = [
@@ -182,5 +182,68 @@ export class InMemoryPromoRepository implements IPromoRepository {
 
   findAll(): PromoEntity[] {
     return [...this.promos];
+  }
+}
+
+// Fixed catalog of delivery methods (config, not per-order) — see
+// tech-design.md §2.2. Placeholder fee/day values pending product sign-off,
+// see docs/decisions.md.
+export class InMemoryDeliveryMethodRepository implements IDeliveryMethodRepository {
+  private deliveryMethods: DeliveryMethodOption[] = [
+    {
+      type: 'regular',
+      label: 'Regular',
+      fee: 5.99,
+      estimatedDays: '3-5'
+    },
+    {
+      type: 'extra',
+      label: 'Extra',
+      fee: 14.99,
+      estimatedDays: '1-2'
+    }
+  ];
+
+  findAll(): DeliveryMethodOption[] {
+    return [...this.deliveryMethods];
+  }
+
+  findByType(type: DeliveryMethodType): DeliveryMethodOption | undefined {
+    return this.deliveryMethods.find(method => method.type === type);
+  }
+}
+
+// In-memory payment attempts store — mirrors InMemoryOrderRepository's shape
+// (private array + reset()). See tech-design.md §2.4.
+export class InMemoryPaymentRepository implements IPaymentRepository {
+  private payments: PaymentRecord[] = [];
+
+  reset(): void {
+    this.payments = [];
+  }
+
+  findById(paymentId: string): PaymentRecord | undefined {
+    return this.payments.find(payment => payment.paymentId === paymentId);
+  }
+
+  findByOrderId(orderId: string): PaymentRecord[] {
+    return this.payments.filter(payment => payment.orderId === orderId);
+  }
+
+  findByIdempotencyKey(orderId: string, idempotencyKey: string): PaymentRecord | undefined {
+    return this.payments.find(
+      payment => payment.orderId === orderId && payment.idempotencyKey === idempotencyKey
+    );
+  }
+
+  create(payment: PaymentRecord): void {
+    this.payments.push(payment);
+  }
+
+  update(payment: PaymentRecord): void {
+    const index = this.payments.findIndex(p => p.paymentId === payment.paymentId);
+    if (index !== -1) {
+      this.payments[index] = payment;
+    }
   }
 }

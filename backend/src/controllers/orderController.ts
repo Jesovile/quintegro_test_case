@@ -128,6 +128,13 @@ export class OrderController {
 
       return res.status(200).json(updatedOrder);
     } catch (error) {
+      // The mandatory status !== 'created' guard on OrderService.deleteProductFromOrder
+      // (tech-design §4.6) throws this specific error — surface it as a 409
+      // Conflict rather than swallowing it into a generic 500, matching the
+      // GraphQL resolver's rethrow-not-swallow handling of the same guard.
+      if (error instanceof Error && error.message === 'Order cannot be modified in its current status') {
+        return res.status(409).json({ error: error.message });
+      }
       console.error('Delete product from order error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }

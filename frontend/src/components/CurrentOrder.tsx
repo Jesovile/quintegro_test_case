@@ -1,23 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useHistory } from 'react-router-dom'
+import { useQuery } from '@apollo/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { GET_CURRENT_CART } from '../graphql/queries'
 
+// Rewritten per tech-design.md §6.4 / implementation-plan-05.md iteration
+// 5.5 — drops the hardcoded browser-storage-backed `currentItems` stub
+// (getItem/setItem, defaulted to 10, never reflected reality) entirely. Real
+// cart state comes from the `currentCart` query (Feature 1), which only ever
+// returns the user's single `created`-status order or null. After a
+// successful payment (Feature 4) the order transitions to `paid`, so
+// `currentCart` naturally returns null and the badge disappears — no
+// explicit "clear cart" mutation exists or is needed (AC-502-1/502-2).
 const CurrentOrder: React.FC = () => {
-  const [itemCount, setItemCount] = useState(0)
   const history = useHistory()
+  const { data } = useQuery(GET_CURRENT_CART)
 
-  useEffect(() => {
-    // Initialize with stub data if not exists
-    const currentItems = localStorage.getItem('currentItems')
-    if (!currentItems) {
-      localStorage.setItem('currentItems', '10')
-      setItemCount(10)
-    } else {
-      setItemCount(parseInt(currentItems, 10))
-    }
-  }, [])
+  const itemCount: number = data?.currentCart?.products?.reduce(
+    (sum: number, item: { amount: number }) => sum + item.amount,
+    0
+  ) ?? 0
 
   const handleClick = () => {
     history.push('/order')

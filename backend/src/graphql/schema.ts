@@ -20,17 +20,33 @@ export const typeDefs = gql`
     dueDate: Float!
   }
 
+  type Address {
+    country: String!
+    city: String!
+    streetAndHouseNumber: String!
+    postalCode: String!
+    phone: String!
+  }
+
   type Order {
     orderId: ID!
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    recipientName: String
+    shippingAddress: Address
+    billingAddress: Address
+    comment: String
+    paymentMethodId: String
   }
 
   enum OrderStatus {
     created
-    submited
+    submitted
+    paid
+    in_delivery
     finished
+    cancelled
   }
 
   input ProductInput {
@@ -48,16 +64,52 @@ export const typeDefs = gql`
     token: String!
   }
 
+  type PaymentMethod {
+    id: ID!
+    label: String!
+  }
+
+  input AddressInput {
+    country: String!
+    city: String!
+    streetAndHouseNumber: String!
+    postalCode: String!
+    phone: String!
+  }
+
+  input CheckoutInput {
+    recipientName: String!
+    shipping: AddressInput!
+    billing: AddressInput
+    comment: String
+    paymentMethodId: String!
+  }
+
+  input PaymentInput {
+    cardNumber: String
+    cardExpiry: String
+    cardCvc: String
+    cardholderName: String
+  }
+
+  type PayOrderResult {
+    success: Boolean!
+    order: Order!
+  }
+
   type Query {
     orders: [Order!]!
     order(orderId: ID!): Order
     orderSum(orderId: ID!, products: [ProductInput!]!, promo: String): Float!
     promo(promoId: ID!): Promo
+    paymentMethods: [PaymentMethod!]!
   }
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
+    submitOrder(orderId: ID!, input: CheckoutInput!): Order!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
+    payOrder(orderId: ID!, input: PaymentInput): PayOrderResult!
+    cancelOrder(orderId: ID!): Order!
   }
 `;

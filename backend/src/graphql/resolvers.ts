@@ -1,8 +1,14 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { PaymentMethodService } from '../services/paymentMethodService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+export const createResolvers = (
+  orderService: OrderService,
+  authService: AuthService,
+  promoService: PromoService,
+  paymentMethodService: PaymentMethodService
+) => {
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -80,6 +86,10 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to fetch promo');
         }
+      },
+
+      paymentMethods: async () => {
+        return paymentMethodService.getPaymentMethods();
       }
     },
 
@@ -98,21 +108,35 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+      submitOrder: async (parent: any, { orderId, input }: { orderId: string, input: any }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {
           throw new Error('Authentication required');
         }
 
-        try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
-        } catch (error) {
-          throw new Error('Failed to submit order');
+        const result = await orderService.submitOrder(orderId, userId, input);
+        if (!result.success) {
+          throw new Error(result.error);
         }
+        return result.order;
+      },
+
+      payOrder: async (parent: any, { orderId, input }: { orderId: string, input?: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        return orderService.payOrder(orderId, userId, input);
+      },
+
+      cancelOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        return orderService.cancelOrder(orderId, userId);
       },
 
       deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {

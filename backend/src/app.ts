@@ -16,6 +16,7 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
+import { PaymentMethodService } from './services/paymentMethodService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
 
 export class App {
@@ -109,9 +110,10 @@ export class App {
     const authService = new AuthService(authRepository, userRepository);
     const orderService = new OrderService(orderRepository, productRepository, promoRepository);
     const promoService = new PromoService(promoRepository);
+    const paymentMethodService = new PaymentMethodService();
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, paymentMethodService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

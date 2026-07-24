@@ -1,5 +1,20 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
+import {
+  OrderRecord,
+  OrderDTO,
+  ProductRecord,
+  PromoEntity,
+  Address,
+  CheckoutInput,
+  SubmitOrderResult,
+  PaymentInput,
+  PayOrderResult
+} from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+
+// Mocked payment "test decline number": submitting this exact card number to
+// payOrder always fails; any other syntactically-valid card number succeeds.
+// Documented in backend/README.md as well.
+const TEST_DECLINE_CARD_NUMBER = '4000000000000002';
 
 export class OrderService {
   constructor(
@@ -116,31 +131,137 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
+  async submitOrder(orderId: string, userId: string, input: CheckoutInput): Promise<SubmitOrderResult> {
     const order = this.orderRepository.findById(orderId);
-    
+
     if (!order) {
-      return false;
+      return { success: false, error: 'Order not found or access denied' };
     }
 
     if (order.userId !== userId) {
-      return false;
+      return { success: false, error: 'Order not found or access denied' };
     }
 
     // Check if order is in 'created' status
     if (order.status !== 'created') {
-      return false;
+      return { success: false, error: 'Order is not in created status' };
     }
 
-    // Update order status to 'submited'
+    const validationError = this.validateCheckoutInput(input);
+    if (validationError) {
+      return { success: false, error: validationError };
+    }
+
+    // billing omitted/null on the input means "same as shipping" — copy the
+    // shipping address across rather than leaving billingAddress unset.
+    const billingAddress: Address = input.billing ? { ...input.billing } : { ...input.shipping };
+
     const updatedOrder: OrderRecord = {
       ...order,
-      status: 'submited'
+      status: 'submitted',
+      recipientName: input.recipientName,
+      shippingAddress: { ...input.shipping },
+      billingAddress,
+      comment: input.comment ?? undefined,
+      paymentMethodId: input.paymentMethodId
     };
 
-    // Update the in-memory repository
     this.updateOrder(updatedOrder);
-    return true;
+    return { success: true, order: this.transformToDTO(updatedOrder) };
+  }
+
+  private validateCheckoutInput(input: CheckoutInput): string | null {
+    const isNonEmpty = (value: string | undefined | null): boolean => !!value && value.trim().length > 0;
+
+    if (!isNonEmpty(input.recipientName)) {
+      return 'Recipient name is required';
+    }
+
+    if (!this.isAddressComplete(input.shipping)) {
+      return 'All shipping address fields are required';
+    }
+
+    // Only validate billing fields when a distinct billing address was supplied.
+    if (input.billing && !this.isAddressComplete(input.billing)) {
+      return 'All billing address fields are required';
+    }
+
+    if (!isNonEmpty(input.paymentMethodId)) {
+      return 'Payment method is required';
+    }
+
+    return null;
+  }
+
+  private isAddressComplete(address: Address): boolean {
+    const isNonEmpty = (value: string | undefined | null): boolean => !!value && value.trim().length > 0;
+    return (
+      isNonEmpty(address.country) &&
+      isNonEmpty(address.city) &&
+      isNonEmpty(address.streetAndHouseNumber) &&
+      isNonEmpty(address.postalCode) &&
+      isNonEmpty(address.phone)
+    );
+  }
+
+  async payOrder(orderId: string, userId: string, input?: PaymentInput | null): Promise<PayOrderResult> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found or access denied');
+    }
+
+    if (order.userId !== userId) {
+      throw new Error('Order not found or access denied');
+    }
+
+    // Payment can only be attempted on an order that has completed checkout
+    // and not already been paid/cancelled/etc.
+    if (order.status !== 'submitted') {
+      throw new Error('Order is not awaiting payment');
+    }
+
+    // Card number/CVC are read only to decide success/decline below — they
+    // are never written to the repository (no real cardholder data persisted).
+    const isDeclined = order.paymentMethodId === 'card' && input?.cardNumber === TEST_DECLINE_CARD_NUMBER;
+
+    if (isDeclined) {
+      // Status stays 'submitted' so the buyer can retry.
+      return { success: false, error: 'Payment declined', order: this.transformToDTO(order) };
+    }
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      status: 'paid'
+    };
+
+    this.updateOrder(updatedOrder);
+    return { success: true, order: this.transformToDTO(updatedOrder) };
+  }
+
+  async cancelOrder(orderId: string, userId: string): Promise<OrderDTO> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found or access denied');
+    }
+
+    if (order.userId !== userId) {
+      throw new Error('Order not found or access denied');
+    }
+
+    // Cancellation is only possible before payment has been taken.
+    if (order.status !== 'created' && order.status !== 'submitted') {
+      throw new Error('Order cannot be cancelled in its current status');
+    }
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      status: 'cancelled'
+    };
+
+    this.updateOrder(updatedOrder);
+    return this.transformToDTO(updatedOrder);
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
@@ -183,7 +304,13 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      promo: order.promo,
+      recipientName: order.recipientName,
+      shippingAddress: order.shippingAddress,
+      billingAddress: order.billingAddress,
+      comment: order.comment,
+      paymentMethodId: order.paymentMethodId
     };
   }
 }

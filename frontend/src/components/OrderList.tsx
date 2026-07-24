@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
+import OrderCheckoutDetails from './OrderCheckoutDetails'
 import { Loader2 } from 'lucide-react'
 
 interface Product {
@@ -19,30 +20,33 @@ interface OrderItem {
   price: number
 }
 
+interface Address {
+  country: string
+  city: string
+  streetAndHouseNumber: string
+  postalCode: string
+  phone: string
+}
+
 interface Order {
   orderId: string
-  status: 'created' | 'submited' | 'finished'
+  status: 'created' | 'submitted' | 'paid' | 'in_delivery' | 'finished' | 'cancelled'
   products: OrderItem[]
+  recipientName?: string | null
+  shippingAddress?: Address | null
+  billingAddress?: Address | null
+  comment?: string | null
 }
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
 
-  const { loading, error, refetch } = useQuery(GET_ORDERS, {
+  const { loading, error } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
       setOrders(data.orders || [])
     },
     onError: (error) => {
       console.error('GraphQL error:', error)
-    }
-  })
-
-  const [submitOrder] = useMutation(SUBMIT_ORDER, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Failed to submit order:', error)
     }
   })
 
@@ -76,7 +80,7 @@ const OrderList: React.FC = () => {
   }
 
   const handleDelete = (productId: string) => {
-    setOrders(prevOrders => 
+    setOrders(prevOrders =>
       prevOrders.map(order => ({
         ...order,
         products: order.products.filter(item => item.product.id !== productId)
@@ -84,14 +88,14 @@ const OrderList: React.FC = () => {
     )
   }
 
-  const handleSubmitOrder = async (orderId: string) => {
-    try {
-      await submitOrder({
-        variables: { orderId }
-      })
-    } catch (error) {
-      console.error('Error submitting order:', error)
-    }
+  const handleOrderCancelled = (orderId: string, status: string) => {
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.orderId === orderId
+          ? { ...order, status: status as Order['status'] }
+          : order
+      )
+    )
   }
 
   if (loading) {
@@ -153,7 +157,14 @@ const OrderList: React.FC = () => {
           <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
             Order #{order.orderId} - {order.status}
           </h2>
-          
+
+          <OrderCheckoutDetails
+            recipientName={order.recipientName}
+            shippingAddress={order.shippingAddress}
+            billingAddress={order.billingAddress}
+            comment={order.comment}
+          />
+
           {order.products.map((item, index) => (
             <OrderListItem
               key={item.product.id}
@@ -163,7 +174,7 @@ const OrderList: React.FC = () => {
               orderId={order.orderId}
               onAmountChange={handleAmountChange}
               onDelete={handleDelete}
-              onSubmitOrder={handleSubmitOrder}
+              onOrderCancelled={handleOrderCancelled}
               status={order.status}
               isLast={index === order.products.length -1}
             />

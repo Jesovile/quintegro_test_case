@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { Plus, Minus, Trash2 } from 'lucide-react'
 import { useMutation } from '@apollo/client'
-import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { useHistory } from 'react-router-dom'
+import { DELETE_PRODUCT_FROM_ORDER, CANCEL_ORDER } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,13 +20,14 @@ interface OrderListItemProps {
   orderId: string
   onAmountChange: (productId: string, newAmount: number) => void
   onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
+  onOrderCancelled: (orderId: string, status: string) => void
   status: string;
   isLast: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
+const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onOrderCancelled, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
+  const history = useHistory()
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
@@ -33,6 +35,15 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
     },
     onError: (error) => {
       console.error('Failed to delete product:', error)
+    }
+  })
+
+  const [cancelOrder, { loading: cancelling }] = useMutation(CANCEL_ORDER, {
+    onCompleted: (data) => {
+      onOrderCancelled(data.cancelOrder.orderId, data.cancelOrder.status)
+    },
+    onError: (error) => {
+      console.error('Failed to cancel order:', error)
     }
   })
 
@@ -131,14 +142,32 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
-        <div className="mt-6 flex justify-end">
+      {isLast && (status === 'created' || status === 'submitted') && (
+        <div className="mt-6 flex justify-end gap-3">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
-            className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            variant="outline"
+            onClick={() => cancelOrder({ variables: { orderId } })}
+            disabled={cancelling}
+            className="min-w-[120px] h-10 text-red-600 border-red-300 hover:bg-red-500 hover:text-white font-medium"
           >
-            Submit Order
+            {cancelling ? 'Cancelling...' : 'Cancel order'}
           </Button>
+          {status === 'created' && (
+            <Button
+              onClick={() => history.push(`/order/${orderId}/checkout`)}
+              className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            >
+              Submit Order
+            </Button>
+          )}
+          {status === 'submitted' && (
+            <Button
+              onClick={() => history.push(`/order/${orderId}/payment`)}
+              className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            >
+              Proceed to Payment
+            </Button>
+          )}
         </div>
       )}
     </div>

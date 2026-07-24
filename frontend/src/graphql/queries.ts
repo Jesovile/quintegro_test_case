@@ -21,6 +21,23 @@ export const GET_ORDERS = gql`
         discount
         dueDate
       }
+      recipientName
+      shippingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      billingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      comment
+      paymentMethodId
     }
   }
 `;
@@ -46,6 +63,23 @@ export const GET_ORDER = gql`
         discount
         dueDate
       }
+      recipientName
+      shippingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      billingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      comment
+      paymentMethodId
     }
   }
 `;
@@ -64,6 +98,16 @@ export const GET_PROMO = gql`
       id
       discount
       dueDate
+    }
+  }
+`;
+
+// Query to get the available payment methods (backend-driven)
+export const GET_PAYMENT_METHODS = gql`
+  query GetPaymentMethods {
+    paymentMethods {
+      id
+      label
     }
   }
 `;

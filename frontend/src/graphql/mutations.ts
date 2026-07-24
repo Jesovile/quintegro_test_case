@@ -9,10 +9,55 @@ export const LOGIN = gql`
   }
 `;
 
-// Mutation to submit an order
+// Mutation to submit the checkout details for an order, moving it from
+// Created to Submitted and persisting recipient/shipping/billing/comment/
+// payment method.
 export const SUBMIT_ORDER = gql`
-  mutation SubmitOrder($orderId: ID!) {
-    submitOrder(orderId: $orderId)
+  mutation SubmitOrder($orderId: ID!, $input: CheckoutInput!) {
+    submitOrder(orderId: $orderId, input: $input) {
+      orderId
+      status
+      recipientName
+      shippingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      billingAddress {
+        country
+        city
+        streetAndHouseNumber
+        postalCode
+        phone
+      }
+      comment
+      paymentMethodId
+    }
+  }
+`;
+
+// Mutation to attempt (mocked) payment on a Submitted order
+export const PAY_ORDER = gql`
+  mutation PayOrder($orderId: ID!, $input: PaymentInput) {
+    payOrder(orderId: $orderId, input: $input) {
+      success
+      order {
+        orderId
+        status
+      }
+    }
+  }
+`;
+
+// Mutation to cancel an order (only while Created or Submitted)
+export const CANCEL_ORDER = gql`
+  mutation CancelOrder($orderId: ID!) {
+    cancelOrder(orderId: $orderId) {
+      orderId
+      status
+    }
   }
 `;
 

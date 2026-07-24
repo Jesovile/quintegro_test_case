@@ -148,6 +148,11 @@ const CheckoutDetailsPage: React.FC = () => {
     e.preventDefault()
     setSubmitError('')
 
+    if (order.status === 'submitted') {
+      history.push(`/order/${orderId}/payment`)
+      return
+    }
+
     if (!validate()) return
 
     try {

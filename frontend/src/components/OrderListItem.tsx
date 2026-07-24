@@ -160,6 +160,14 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
               Submit Order
             </Button>
           )}
+          {status === 'submitted' && (
+            <Button
+              onClick={() => history.push(`/order/${orderId}/payment`)}
+              className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            >
+              Proceed to Payment
+            </Button>
+          )}
         </div>
       )}
     </div>

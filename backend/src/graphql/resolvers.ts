@@ -1,8 +1,14 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { PaymentMethodService } from '../services/paymentMethodService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+export const createResolvers = (
+  orderService: OrderService,
+  authService: AuthService,
+  promoService: PromoService,
+  paymentMethodService: PaymentMethodService
+) => {
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -80,6 +86,10 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to fetch promo');
         }
+      },
+
+      paymentMethods: async () => {
+        return paymentMethodService.getPaymentMethods();
       }
     },
 

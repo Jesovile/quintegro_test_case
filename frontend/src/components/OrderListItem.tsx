@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Minus, Trash2 } from 'lucide-react'
 import { useMutation } from '@apollo/client'
+import { useHistory } from 'react-router-dom'
 import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,13 +20,13 @@ interface OrderListItemProps {
   orderId: string
   onAmountChange: (productId: string, newAmount: number) => void
   onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
   status: string;
   isLast: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
+const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
+  const history = useHistory()
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
     onCompleted: () => {
@@ -131,10 +132,10 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
+      {isLast && status === 'created' && (
         <div className="mt-6 flex justify-end">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
+            onClick={() => history.push(`/order/${orderId}/checkout`)}
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
             Submit Order

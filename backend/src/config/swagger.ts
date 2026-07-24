@@ -128,7 +128,7 @@ const options: swaggerJsdoc.Options = {
             },
             status: {
               type: 'string',
-              enum: ['created', 'submited', 'finished'],
+              enum: ['created', 'submitted', 'paid', 'in_delivery', 'finished', 'cancelled'],
               description: 'Order status',
               example: 'finished'
             },
@@ -180,7 +180,7 @@ const options: swaggerJsdoc.Options = {
             },
             status: {
               type: 'string',
-              enum: ['created', 'submited', 'finished'],
+              enum: ['created', 'submitted', 'paid', 'in_delivery', 'finished', 'cancelled'],
               description: 'Order status',
               example: 'finished'
             },

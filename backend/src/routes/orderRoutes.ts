@@ -271,7 +271,7 @@ export function createOrderRoutes(orderController: OrderController): Router {
    * @swagger
    * /order/{orderId}:
    *   post:
-   *     summary: Submit an order (change status to 'submited')
+   *     summary: Submit an order (change status to 'submitted')
    *     tags: [Orders]
    *     security:
    *       - bearerAuth: []

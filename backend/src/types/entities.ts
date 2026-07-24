@@ -25,10 +25,31 @@ export interface ProductRecord {
   image: string;
 }
 
+export type OrderStatus =
+  | 'created'
+  | 'submitted'
+  | 'paid'
+  | 'in_delivery'
+  | 'finished'
+  | 'cancelled';
+
+export interface Address {
+  country: string;
+  city: string;
+  streetAndHouseNumber: string;
+  postalCode: string;
+  phone: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  label: string;
+}
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
   products: Array<{
     id: string;
@@ -36,17 +57,27 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  recipientName?: string;
+  shippingAddress?: Address;
+  billingAddress?: Address;
+  comment?: string;
+  paymentMethodId?: string;
 }
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   products: Array<{
     product: ProductRecord;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  recipientName?: string;
+  shippingAddress?: Address;
+  billingAddress?: Address;
+  comment?: string;
+  paymentMethodId?: string;
 }
 
 export interface PromoEntity {

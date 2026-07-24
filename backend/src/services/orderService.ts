@@ -132,10 +132,10 @@ export class OrderService {
       return false;
     }
 
-    // Update order status to 'submited'
+    // Update order status to 'submitted'
     const updatedOrder: OrderRecord = {
       ...order,
-      status: 'submited'
+      status: 'submitted'
     };
 
     // Update the in-memory repository

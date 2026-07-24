@@ -4,6 +4,7 @@ import { GET_ORDERS } from '../graphql/queries'
 import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
+import OrderCheckoutDetails from './OrderCheckoutDetails'
 import { Loader2 } from 'lucide-react'
 
 interface Product {
@@ -19,10 +20,22 @@ interface OrderItem {
   price: number
 }
 
+interface Address {
+  country: string
+  city: string
+  streetAndHouseNumber: string
+  postalCode: string
+  phone: string
+}
+
 interface Order {
   orderId: string
   status: 'created' | 'submitted' | 'paid' | 'in_delivery' | 'finished' | 'cancelled'
   products: OrderItem[]
+  recipientName?: string | null
+  shippingAddress?: Address | null
+  billingAddress?: Address | null
+  comment?: string | null
 }
 
 const OrderList: React.FC = () => {
@@ -67,11 +80,21 @@ const OrderList: React.FC = () => {
   }
 
   const handleDelete = (productId: string) => {
-    setOrders(prevOrders => 
+    setOrders(prevOrders =>
       prevOrders.map(order => ({
         ...order,
         products: order.products.filter(item => item.product.id !== productId)
       })).filter(order => order.products.length > 0)
+    )
+  }
+
+  const handleOrderCancelled = (orderId: string, status: string) => {
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.orderId === orderId
+          ? { ...order, status: status as Order['status'] }
+          : order
+      )
     )
   }
 
@@ -134,7 +157,14 @@ const OrderList: React.FC = () => {
           <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
             Order #{order.orderId} - {order.status}
           </h2>
-          
+
+          <OrderCheckoutDetails
+            recipientName={order.recipientName}
+            shippingAddress={order.shippingAddress}
+            billingAddress={order.billingAddress}
+            comment={order.comment}
+          />
+
           {order.products.map((item, index) => (
             <OrderListItem
               key={item.product.id}
@@ -144,6 +174,7 @@ const OrderList: React.FC = () => {
               orderId={order.orderId}
               onAmountChange={handleAmountChange}
               onDelete={handleDelete}
+              onOrderCancelled={handleOrderCancelled}
               status={order.status}
               isLast={index === order.products.length -1}
             />

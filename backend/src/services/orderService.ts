@@ -239,6 +239,31 @@ export class OrderService {
     return { success: true, order: this.transformToDTO(updatedOrder) };
   }
 
+  async cancelOrder(orderId: string, userId: string): Promise<OrderDTO> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found or access denied');
+    }
+
+    if (order.userId !== userId) {
+      throw new Error('Order not found or access denied');
+    }
+
+    // Cancellation is only possible before payment has been taken.
+    if (order.status !== 'created' && order.status !== 'submitted') {
+      throw new Error('Order cannot be cancelled in its current status');
+    }
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      status: 'cancelled'
+    };
+
+    this.updateOrder(updatedOrder);
+    return this.transformToDTO(updatedOrder);
+  }
+
   private updateOrder(updatedOrder: OrderRecord): void {
     // Update the order in the in-memory repository
     // This method should be called whenever order state changes

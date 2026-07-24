@@ -46,6 +46,25 @@ export interface PaymentMethod {
   label: string;
 }
 
+// AddressInput mirrors Address's shape but is the wire type accepted from the
+// checkout form (kept as a distinct alias in case shipping/billing input
+// validation ever needs to diverge from the persisted Address shape).
+export type AddressInput = Address;
+
+export interface CheckoutInput {
+  recipientName: string;
+  shipping: AddressInput;
+  // billing omitted/null signals "same as shipping" — the service copies the
+  // shipping address into billingAddress in that case (see orderService.ts).
+  billing?: AddressInput | null;
+  comment?: string | null;
+  paymentMethodId: string;
+}
+
+export type SubmitOrderResult =
+  | { success: true; order: OrderDTO }
+  | { success: false; error: string };
+
 export interface OrderRecord {
   orderId: string;
   userId: string;

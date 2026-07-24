@@ -108,21 +108,17 @@ export const createResolvers = (
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+      submitOrder: async (parent: any, { orderId, input }: { orderId: string, input: any }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {
           throw new Error('Authentication required');
         }
 
-        try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
-        } catch (error) {
-          throw new Error('Failed to submit order');
+        const result = await orderService.submitOrder(orderId, userId, input);
+        if (!result.success) {
+          throw new Error(result.error);
         }
+        return result.order;
       },
 
       deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {

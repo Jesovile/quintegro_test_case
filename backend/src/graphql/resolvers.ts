@@ -121,6 +121,15 @@ export const createResolvers = (
         return result.order;
       },
 
+      payOrder: async (parent: any, { orderId, input }: { orderId: string, input?: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        return orderService.payOrder(orderId, userId, input);
+      },
+
       deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {

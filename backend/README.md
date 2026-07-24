@@ -140,6 +140,17 @@ curl -X POST http://localhost:3000/api/login \
 3. Use the interactive documentation to test endpoints
 4. Or use tools like Postman/Insomnia with the examples above
 
+## Mocked payment processing (GraphQL `payOrder`)
+
+Payment is entirely mocked — no real payment gateway is contacted, and no
+card data is ever persisted.
+
+- **Card**: submitting the test card number `4000000000000002` always
+  results in a declined payment (order stays `submitted`). Any other
+  syntactically valid card number always succeeds (order moves to `paid`).
+- **PayPal / Klarna**: the mocked "Proceed to payment" action always
+  succeeds.
+
 ## Security Notes
 
 - JWT tokens expire after 24 hours

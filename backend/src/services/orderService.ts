@@ -5,9 +5,16 @@ import {
   PromoEntity,
   Address,
   CheckoutInput,
-  SubmitOrderResult
+  SubmitOrderResult,
+  PaymentInput,
+  PayOrderResult
 } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+
+// Mocked payment "test decline number": submitting this exact card number to
+// payOrder always fails; any other syntactically-valid card number succeeds.
+// Documented in backend/README.md as well.
+const TEST_DECLINE_CARD_NUMBER = '4000000000000002';
 
 export class OrderService {
   constructor(
@@ -195,6 +202,41 @@ export class OrderService {
       isNonEmpty(address.postalCode) &&
       isNonEmpty(address.phone)
     );
+  }
+
+  async payOrder(orderId: string, userId: string, input?: PaymentInput | null): Promise<PayOrderResult> {
+    const order = this.orderRepository.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found or access denied');
+    }
+
+    if (order.userId !== userId) {
+      throw new Error('Order not found or access denied');
+    }
+
+    // Payment can only be attempted on an order that has completed checkout
+    // and not already been paid/cancelled/etc.
+    if (order.status !== 'submitted') {
+      throw new Error('Order is not awaiting payment');
+    }
+
+    // Card number/CVC are read only to decide success/decline below — they
+    // are never written to the repository (no real cardholder data persisted).
+    const isDeclined = order.paymentMethodId === 'card' && input?.cardNumber === TEST_DECLINE_CARD_NUMBER;
+
+    if (isDeclined) {
+      // Status stays 'submitted' so the buyer can retry.
+      return { success: false, error: 'Payment declined', order: this.transformToDTO(order) };
+    }
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      status: 'paid'
+    };
+
+    this.updateOrder(updatedOrder);
+    return { success: true, order: this.transformToDTO(updatedOrder) };
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {

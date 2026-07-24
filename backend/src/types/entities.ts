@@ -61,9 +61,20 @@ export interface CheckoutInput {
   paymentMethodId: string;
 }
 
+export interface PaymentInput {
+  cardNumber?: string | null;
+  cardExpiry?: string | null;
+  cardCvc?: string | null;
+  cardholderName?: string | null;
+}
+
 export type SubmitOrderResult =
   | { success: true; order: OrderDTO }
   | { success: false; error: string };
+
+export type PayOrderResult =
+  | { success: true; order: OrderDTO }
+  | { success: false; error: string; order: OrderDTO };
 
 export interface OrderRecord {
   orderId: string;

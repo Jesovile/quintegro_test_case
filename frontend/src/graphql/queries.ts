@@ -21,6 +21,12 @@ export const GET_ORDERS = gql`
         discount
         dueDate
       }
+      checkout {
+        submittedAt
+        quote { id fingerprint subtotalMinor discountMinor deliveryFeeMinor totalMinor currency deliveryQuoteId expiresAt }
+        payment { status reference brand last4 }
+        delivery { quoteId reference method feeMinor estimatedDeliveryAt }
+      }
     }
   }
 `;
@@ -46,6 +52,12 @@ export const GET_ORDER = gql`
         discount
         dueDate
       }
+      checkout {
+        submittedAt
+        quote { id fingerprint subtotalMinor discountMinor deliveryFeeMinor totalMinor currency deliveryQuoteId expiresAt }
+        payment { status reference brand last4 }
+        delivery { quoteId reference method feeMinor estimatedDeliveryAt }
+      }
     }
   }
 `;
@@ -64,6 +76,22 @@ export const GET_PROMO = gql`
       id
       discount
       dueDate
+    }
+  }
+`;
+
+export const GET_CHECKOUT_QUOTE = gql`
+  query CheckoutQuote($input: CheckoutQuoteInput!) {
+    checkoutQuote(input: $input) {
+      id
+      fingerprint
+      subtotalMinor
+      discountMinor
+      deliveryFeeMinor
+      totalMinor
+      currency
+      deliveryQuoteId
+      expiresAt
     }
   }
 `;

@@ -1,23 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useHistory } from 'react-router-dom'
+import { useQuery } from '@apollo/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { GET_ORDERS } from '../graphql/queries'
+import { Order } from '../lib/checkoutTypes'
 
 const CurrentOrder: React.FC = () => {
-  const [itemCount, setItemCount] = useState(0)
   const history = useHistory()
-
-  useEffect(() => {
-    // Initialize with stub data if not exists
-    const currentItems = localStorage.getItem('currentItems')
-    if (!currentItems) {
-      localStorage.setItem('currentItems', '10')
-      setItemCount(10)
-    } else {
-      setItemCount(parseInt(currentItems, 10))
-    }
-  }, [])
+  const { data } = useQuery<{ orders: Order[] }>(GET_ORDERS)
+  const itemCount = (data?.orders || []).filter(order => order.status === 'created').reduce((total, order) => total + order.products.reduce((sum, item) => sum + item.amount, 0), 0)
 
   const handleClick = () => {
     history.push('/order')

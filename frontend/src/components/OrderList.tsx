@@ -1,97 +1,31 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useQuery, useMutation } from '@apollo/client'
+import { useHistory } from 'react-router-dom'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER, UPDATE_PRODUCT_AMOUNT } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
 import { Loader2 } from 'lucide-react'
 
-interface Product {
-  id: string
-  title: string
-  description: string
-  image: string
-}
-
-interface OrderItem {
-  product: Product
-  amount: number
-  price: number
-}
-
-interface Order {
-  orderId: string
-  status: 'created' | 'submited' | 'finished'
-  products: OrderItem[]
-}
+import { Order } from '../lib/checkoutTypes'
 
 const OrderList: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([])
-
-  const { loading, error, refetch } = useQuery(GET_ORDERS, {
-    onCompleted: (data) => {
-      setOrders(data.orders || [])
-    },
-    onError: (error) => {
-      console.error('GraphQL error:', error)
-    }
-  })
-
-  const [submitOrder] = useMutation(SUBMIT_ORDER, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Failed to submit order:', error)
-    }
-  })
+  const history = useHistory()
+  const { loading, error, data, refetch } = useQuery<{ orders: Order[] }>(GET_ORDERS)
+  const orders = data?.orders || []
 
   const [_deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
-    onCompleted: (data) => {
-      // Update local state with the returned order
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.orderId === data.deleteProductFromOrder.orderId 
-            ? data.deleteProductFromOrder 
-            : order
-        )
-      )
-    },
-    onError: (error) => {
-      console.error('Failed to delete product:', error)
-    }
+    onCompleted: () => void refetch()
   })
 
-  const handleAmountChange = (productId: string, newAmount: number) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => ({
-        ...order,
-        products: order.products.map(item => 
-          item.product.id === productId 
-            ? { ...item, amount: newAmount }
-            : item
-        )
-      }))
-    )
+  const [updateProductAmount] = useMutation(UPDATE_PRODUCT_AMOUNT, { onCompleted: () => void refetch() })
+
+  const handleAmountChange = (orderId: string, productId: string, amount: number) => {
+    void updateProductAmount({ variables: { orderId, productId, amount } })
   }
 
-  const handleDelete = (productId: string) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => ({
-        ...order,
-        products: order.products.filter(item => item.product.id !== productId)
-      })).filter(order => order.products.length > 0)
-    )
-  }
-
-  const handleSubmitOrder = async (orderId: string) => {
-    try {
-      await submitOrder({
-        variables: { orderId }
-      })
-    } catch (error) {
-      console.error('Error submitting order:', error)
-    }
+  const handleDelete = (orderId: string, productId: string) => {
+    void _deleteProduct({ variables: { orderId, productId } })
   }
 
   if (loading) {
@@ -148,29 +82,34 @@ const OrderList: React.FC = () => {
         Your Orders
       </h1>
       
-      {orders.map((order) => (
+      {orders.filter(order => order.status === 'created').map((order) => (
         <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
             Order #{order.orderId} - {order.status}
           </h2>
           
-          {order.products.map((item, index) => (
+          {order.products.map((item) => (
             <OrderListItem
               key={item.product.id}
               product={item.product}
               amount={item.amount}
               price={item.price}
-              orderId={order.orderId}
-              onAmountChange={handleAmountChange}
-              onDelete={handleDelete}
-              onSubmitOrder={handleSubmitOrder}
-              status={order.status}
-              isLast={index === order.products.length -1}
+              onAmountChange={(productId, amount) => handleAmountChange(order.orderId, productId, amount)}
+              onDelete={productId => handleDelete(order.orderId, productId)}
+              editable
             />
           ))}
-          <OrderSum orderId={order.orderId} products={order.products} />
+          <OrderSum orderId={order.orderId} products={order.products} onProceedToCheckout={id => history.push(`/checkout/${id}`)} />
         </div>
       ))}
+      {orders.filter(order => order.status !== 'created').length > 0 && <>
+        <h2 className="mt-12 text-2xl font-bold text-gray-900">Order history</h2>
+        {orders.filter(order => order.status !== 'created').map(order => <div key={order.orderId} className="mt-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-xl font-semibold">Order #{order.orderId} — {order.status}</h3>
+          {order.products.map(item => <OrderListItem key={item.product.id} product={item.product} amount={item.amount} price={item.price} onAmountChange={() => undefined} onDelete={() => undefined} editable={false} />)}
+          {order.checkout && <button type="button" onClick={() => history.push(`/checkout/${order.orderId}`)} className="mt-3 text-blue-700">Open confirmation</button>}
+        </div>)}
+      </>}
     </div>
   )
 }

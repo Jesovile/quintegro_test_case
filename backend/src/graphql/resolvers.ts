@@ -1,8 +1,10 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { CheckoutService } from '../checkout/checkoutService';
+import { CheckoutError } from '../checkout/errors';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService, checkoutService: CheckoutService) => {
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -81,6 +83,17 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
           throw new Error('Failed to fetch promo');
         }
       }
+      ,
+
+      checkoutQuote: async (parent: any, { input }: { input: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) throw new Error('AUTHENTICATION_REQUIRED');
+        try {
+          return await checkoutService.createQuote(input, userId);
+        } catch (error) {
+          throw new Error(error instanceof CheckoutError ? error.code : 'CHECKOUT_QUOTE_FAILED');
+        }
+      }
     },
 
     Mutation: {
@@ -98,20 +111,16 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+      submitOrder: async (parent: any, { input }: { input: any }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {
-          throw new Error('Authentication required');
+          throw new Error('AUTHENTICATION_REQUIRED');
         }
 
         try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
+          return await checkoutService.submitOrder(input, userId);
         } catch (error) {
-          throw new Error('Failed to submit order');
+          throw new Error(error instanceof CheckoutError ? error.code : 'CHECKOUT_SUBMISSION_FAILED');
         }
       },
 
@@ -130,6 +139,14 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to delete product from order');
         }
+      },
+
+      updateProductAmount: async (parent: any, { orderId, productId, amount }: { orderId: string, productId: string, amount: number }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) throw new Error('AUTHENTICATION_REQUIRED');
+        const updatedOrder = await orderService.updateProductAmount(orderId, productId, amount, userId);
+        if (!updatedOrder) throw new Error('ORDER_NOT_EDITABLE');
+        return updatedOrder;
       }
     }
   };

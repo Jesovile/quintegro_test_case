@@ -17,10 +17,14 @@ import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { InMemoryCheckoutStore } from './repositories/implementations';
+import { CheckoutService } from './checkout/checkoutService';
+import { MockPaymentGateway } from './checkout/adapters/mockPaymentGateway';
+import { MockDeliveryGateway } from './checkout/adapters/mockDeliveryGateway';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  private resettableRepositories: Array<{ reset(): void }> = [];
 
   constructor() {
     this.app = express();
@@ -53,23 +57,25 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+    const checkoutStore = new InMemoryCheckoutStore(orderRepository);
+    this.resettableRepositories.push(orderRepository, checkoutStore);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
+    const orderService = new OrderService(orderRepository, productRepository, promoRepository, checkoutStore);
     const promoService = new PromoService(promoRepository);
+    const checkoutService = new CheckoutService(orderRepository, productRepository, promoRepository, checkoutStore, new MockPaymentGateway(), new MockDeliveryGateway());
 
     // Initialize controllers
     const authController = new AuthController(authService);
-    const orderController = new OrderController(orderService, authService);
+    const orderController = new OrderController(orderService, authService, checkoutService);
     const promoController = new PromoController(promoService);
 
     // Setup routes
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(this.resettableRepositories));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -103,15 +109,17 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+    const checkoutStore = new InMemoryCheckoutStore(orderRepository);
+    this.resettableRepositories.push(orderRepository, checkoutStore);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
+    const orderService = new OrderService(orderRepository, productRepository, promoRepository, checkoutStore);
     const promoService = new PromoService(promoRepository);
+    const checkoutService = new CheckoutService(orderRepository, productRepository, promoRepository, checkoutStore, new MockPaymentGateway(), new MockDeliveryGateway());
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, checkoutService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

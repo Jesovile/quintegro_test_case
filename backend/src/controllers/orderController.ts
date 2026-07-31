@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
+import { CheckoutService } from '../checkout/checkoutService';
+import { CheckoutError } from '../checkout/errors';
+import { SubmitOrderInput } from '../checkout/types';
 
 interface ProductItem {
   id: string;
@@ -16,7 +19,8 @@ interface OrderSumRequest {
 export class OrderController {
   constructor(
     private orderService: OrderService,
-    private authService: AuthService
+    private authService: AuthService,
+    private checkoutService: CheckoutService,
   ) {}
 
   private extractUserIdFromToken(req: Request): string | null {
@@ -147,16 +151,13 @@ export class OrderController {
         return res.status(400).json({ error: 'Order ID is required' });
       }
 
-      const success = await this.orderService.submitOrder(orderId, userId);
-
-      if (!success) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
-
-      return res.status(200).send();
+      const input = { ...(req.body as Omit<SubmitOrderInput, 'orderId'>), orderId };
+      const result = await this.checkoutService.submitOrder(input, userId);
+      return res.status(200).json(result);
     } catch (error) {
-      console.error('Submit order error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      if (error instanceof CheckoutError) return res.status(error.httpStatus).json({ error: error.code });
+      console.error('Submit order error');
+      return res.status(500).json({ error: 'CHECKOUT_SUBMISSION_FAILED' });
     }
   }
 }

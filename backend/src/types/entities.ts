@@ -1,3 +1,5 @@
+import type { CheckoutSnapshot } from '../checkout/types';
+
 export interface UserRecord {
   id: string;
   name: string;
@@ -36,6 +38,7 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  checkout?: CheckoutSnapshot;
 }
 
 export interface OrderDTO {
@@ -47,6 +50,7 @@ export interface OrderDTO {
     price: number;
   }>;
   promo?: PromoEntity;
+  checkout?: CheckoutSnapshot;
 }
 
 export interface PromoEntity {

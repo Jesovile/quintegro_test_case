@@ -4,6 +4,7 @@ import { InMemoryCheckoutStore, InMemoryOrderRepository, InMemoryProductReposito
 import { MockDeliveryGateway } from './adapters/mockDeliveryGateway';
 import { MockPaymentGateway } from './adapters/mockPaymentGateway';
 import { CheckoutService } from './checkoutService';
+import { OrderService } from '../services/orderService';
 
 const deliveryAddress = {
   fullName: 'John Doe',
@@ -20,6 +21,7 @@ function createService() {
   const checkoutStore = new InMemoryCheckoutStore(orderRepository);
   return {
     orderRepository,
+    orderService: new OrderService(orderRepository, productRepository, promoRepository, checkoutStore),
     service: new CheckoutService(orderRepository, productRepository, promoRepository, checkoutStore, new MockPaymentGateway(), new MockDeliveryGateway()),
   };
 }
@@ -50,6 +52,19 @@ test('checkout uses stored prices, persists a snapshot, and is idempotent', asyn
   assert.deepEqual(retry, result);
   assert.equal(orderRepository.findById('order-2')?.status, 'submited');
   assert.equal(orderRepository.findById('order-2')?.checkout?.payment.last4, '4242');
+});
+
+test('completed orders remain readable but cannot be edited', async () => {
+  const { service, orderRepository, orderService } = createService();
+  const quote = await quoteFor(service);
+  await service.submitOrder({
+    orderId: 'order-2', attemptId: 'attempt-completed-order', quoteId: quote.id, quoteFingerprint: quote.fingerprint,
+    expectedTotalMinor: quote.totalMinor, paymentMethod: { token: 'mock_visa_4242', brand: 'Visa', last4: '4242' },
+  }, 'user-1');
+
+  assert.equal((await orderService.getOrderById('order-2', 'user-1'))?.checkout?.payment.last4, '4242');
+  assert.equal(await orderService.updateProductAmount('order-2', 'product-2', 2, 'user-1'), null);
+  assert.equal(orderRepository.findById('order-2')?.products[0].amount, 1);
 });
 
 test('a declined payment leaves the cart editable and never submits the order', async () => {

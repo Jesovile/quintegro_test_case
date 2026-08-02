@@ -25,8 +25,6 @@ export class OrderService {
     if (order.userId !== userId) {
       return null;
     }
-    if (order.status !== 'created' || !this.checkoutStore.isCartEditable(orderId)) return null;
-
     return this.transformToDTO(order);
   }
 
@@ -99,6 +97,7 @@ export class OrderService {
     if (order.userId !== userId) {
       return null;
     }
+    if (order.status !== 'created' || !this.checkoutStore.isCartEditable(orderId)) return null;
 
     // Update the product amount
     const updatedProducts = order.products.map(item => 

@@ -1,5 +1,7 @@
 import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
 import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
+import { ICheckoutStore } from './interfaces';
+import { CheckoutAttempt, CheckoutQuote, CheckoutSnapshot, SubmitOrderPayload } from '../checkout/types';
 
 export class InMemoryUserRepository implements IUserRepository {
   private users: UserRecord[] = [
@@ -154,6 +156,72 @@ export class InMemoryOrderRepository implements IOrderRepository {
     if (index !== -1) {
       this.orders[index] = order;
     }
+  }
+}
+
+export class InMemoryCheckoutStore implements ICheckoutStore {
+  private quotes = new Map<string, CheckoutQuote>();
+  private attempts = new Map<string, CheckoutAttempt>();
+
+  constructor(private readonly orderRepository: IOrderRepository) {}
+
+  saveQuote(quote: CheckoutQuote): void {
+    this.quotes.set(quote.id, quote);
+  }
+
+  findQuote(quoteId: string): CheckoutQuote | undefined {
+    return this.quotes.get(quoteId);
+  }
+
+  claimAttempt(attempt: CheckoutAttempt): CheckoutAttempt {
+    const key = this.attemptKey(attempt.orderId, attempt.attemptId);
+    const existing = this.attempts.get(key);
+    if (existing) return existing;
+
+    const activeAttempt = Array.from(this.attempts.values()).find(candidate =>
+      candidate.orderId === attempt.orderId &&
+      !['payment_failed', 'action_required', 'completed'].includes(candidate.state),
+    );
+    if (activeAttempt) return activeAttempt;
+
+    this.attempts.set(key, attempt);
+    return attempt;
+  }
+
+  findAttempt(orderId: string, attemptId: string): CheckoutAttempt | undefined {
+    return this.attempts.get(this.attemptKey(orderId, attemptId));
+  }
+
+  updateAttempt(attempt: CheckoutAttempt): void {
+    this.attempts.set(this.attemptKey(attempt.orderId, attempt.attemptId), attempt);
+  }
+
+  abandonAttempt(orderId: string, attemptId: string): void {
+    this.attempts.delete(this.attemptKey(orderId, attemptId));
+  }
+
+  isCartEditable(orderId: string): boolean {
+    return !Array.from(this.attempts.values()).some(candidate =>
+      candidate.orderId === orderId && !['payment_failed', 'action_required', 'completed'].includes(candidate.state),
+    );
+  }
+
+  complete(orderId: string, attemptId: string, snapshot: CheckoutSnapshot, result: SubmitOrderPayload): void {
+    const attempt = this.findAttempt(orderId, attemptId);
+    const order = this.orderRepository.findById(orderId);
+    if (!attempt || !order) throw new Error('Checkout completion cannot be persisted');
+
+    this.orderRepository.update({ ...order, status: 'submited', checkout: snapshot });
+    this.updateAttempt({ ...attempt, state: 'completed', result });
+  }
+
+  reset(): void {
+    this.quotes.clear();
+    this.attempts.clear();
+  }
+
+  private attemptKey(orderId: string, attemptId: string): string {
+    return `${orderId}:${attemptId}`;
   }
 }
 

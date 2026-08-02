@@ -1,11 +1,13 @@
 import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+import { ICheckoutStore } from '../repositories/interfaces';
 
 export class OrderService {
   constructor(
     private orderRepository: IOrderRepository,
     private productRepository: IProductRepository,
-    private promoRepository: IPromoRepository
+    private promoRepository: IPromoRepository,
+    private checkoutStore: ICheckoutStore,
   ) {}
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
@@ -23,7 +25,6 @@ export class OrderService {
     if (order.userId !== userId) {
       return null;
     }
-
     return this.transformToDTO(order);
   }
 
@@ -63,6 +64,7 @@ export class OrderService {
     if (order.userId !== userId) {
       return null;
     }
+    if (order.status !== 'created' || !this.checkoutStore.isCartEditable(orderId)) return null;
 
     // Remove the product from the order
     const updatedProducts = order.products.filter(item => item.id !== productId);
@@ -95,6 +97,7 @@ export class OrderService {
     if (order.userId !== userId) {
       return null;
     }
+    if (order.status !== 'created' || !this.checkoutStore.isCartEditable(orderId)) return null;
 
     // Update the product amount
     const updatedProducts = order.products.map(item => 
@@ -114,33 +117,6 @@ export class OrderService {
 
     // Transform to DTO and return
     return this.transformToDTO(updatedOrder);
-  }
-
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
-    const order = this.orderRepository.findById(orderId);
-    
-    if (!order) {
-      return false;
-    }
-
-    if (order.userId !== userId) {
-      return false;
-    }
-
-    // Check if order is in 'created' status
-    if (order.status !== 'created') {
-      return false;
-    }
-
-    // Update order status to 'submited'
-    const updatedOrder: OrderRecord = {
-      ...order,
-      status: 'submited'
-    };
-
-    // Update the in-memory repository
-    this.updateOrder(updatedOrder);
-    return true;
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
@@ -183,7 +159,8 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      checkout: order.checkout,
     };
   }
 }

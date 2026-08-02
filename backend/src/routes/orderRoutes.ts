@@ -271,7 +271,7 @@ export function createOrderRoutes(orderController: OrderController): Router {
    * @swagger
    * /order/{orderId}:
    *   post:
-   *     summary: Submit an order (change status to 'submited')
+   *     summary: Submit an order through the checkout workflow
    *     tags: [Orders]
    *     security:
    *       - bearerAuth: []
@@ -283,9 +283,16 @@ export function createOrderRoutes(orderController: OrderController): Router {
    *           type: string
    *         description: Unique identifier of the order
    *         example: "order-1"
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [attemptId, quoteId, quoteFingerprint, expectedTotalMinor, paymentMethod]
    *     responses:
    *       200:
-   *         description: Order submitted successfully
+   *         description: Checkout result with masked payment and delivery references
    *       400:
    *         description: Bad request - Missing order ID
    *         content:
@@ -327,6 +334,7 @@ export function createOrderRoutes(orderController: OrderController): Router {
    *                   type: string
    *                   example: "Internal server error"
    */
+  router.post('/:orderId/quote', (req, res) => orderController.createCheckoutQuote(req, res));
   router.post('/:orderId', (req, res) => orderController.submitOrder(req, res));
 
   return router;

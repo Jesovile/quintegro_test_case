@@ -180,7 +180,7 @@ export class InMemoryCheckoutStore implements ICheckoutStore {
 
     const activeAttempt = Array.from(this.attempts.values()).find(candidate =>
       candidate.orderId === attempt.orderId &&
-      !['payment_failed', 'completed'].includes(candidate.state),
+      !['payment_failed', 'action_required', 'completed'].includes(candidate.state),
     );
     if (activeAttempt) return activeAttempt;
 
@@ -202,7 +202,7 @@ export class InMemoryCheckoutStore implements ICheckoutStore {
 
   isCartEditable(orderId: string): boolean {
     return !Array.from(this.attempts.values()).some(candidate =>
-      candidate.orderId === orderId && !['payment_failed', 'completed'].includes(candidate.state),
+      candidate.orderId === orderId && !['payment_failed', 'action_required', 'completed'].includes(candidate.state),
     );
   }
 

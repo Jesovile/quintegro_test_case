@@ -115,7 +115,9 @@ export class CheckoutService {
         paymentMethodToken: input.paymentMethod.token,
         idempotencyKey: this.key(input.attemptId, 'authorize'),
       });
-      if (authorization.status === 'unavailable') return this.saveAndReturn(claimed, 'processing', authorization.errorCode);
+      // No authorization was created, so this attempt can safely be retried with a
+      // new idempotency key. Leaving it in `processing` would lock the cart forever.
+      if (authorization.status === 'unavailable') return this.saveAndReturn(claimed, 'payment_failed', authorization.errorCode);
       if (authorization.status === 'declined') return this.saveAndReturn(claimed, 'payment_failed', authorization.errorCode);
       if (authorization.status === 'requires_action') return this.saveAndReturn(claimed, 'action_required', authorization.errorCode);
       if (!authorization.reference) throw new CheckoutError('PAYMENT_INVALID', 'Payment authorization is invalid', 502);

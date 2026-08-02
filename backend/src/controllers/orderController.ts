@@ -3,7 +3,7 @@ import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { CheckoutService } from '../checkout/checkoutService';
 import { CheckoutError } from '../checkout/errors';
-import { SubmitOrderInput } from '../checkout/types';
+import { CheckoutQuoteInput, SubmitOrderInput } from '../checkout/types';
 
 interface ProductItem {
   id: string;
@@ -158,6 +158,24 @@ export class OrderController {
       if (error instanceof CheckoutError) return res.status(error.httpStatus).json({ error: error.code });
       console.error('Submit order error');
       return res.status(500).json({ error: 'CHECKOUT_SUBMISSION_FAILED' });
+    }
+  }
+
+  async createCheckoutQuote(req: Request, res: Response) {
+    try {
+      const userId = this.extractUserIdFromToken(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
+
+      const { orderId } = req.params;
+      if (!orderId) return res.status(400).json({ error: 'Order ID is required' });
+
+      const input = { ...(req.body as Omit<CheckoutQuoteInput, 'orderId'>), orderId };
+      const quote = await this.checkoutService.createQuote(input, userId);
+      return res.status(200).json(quote);
+    } catch (error) {
+      if (error instanceof CheckoutError) return res.status(error.httpStatus).json({ error: error.code });
+      console.error('Create checkout quote error');
+      return res.status(500).json({ error: 'CHECKOUT_QUOTE_FAILED' });
     }
   }
 }

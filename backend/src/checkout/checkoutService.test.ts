@@ -81,6 +81,53 @@ test('a declined payment leaves the cart editable and never submits the order', 
   assert.equal((await quoteFor(service)).totalMinor, quote.totalMinor);
 });
 
+test('retryable payment outcomes require a new attempt and do not lock the cart', async () => {
+  const { service, orderRepository } = createService();
+  const quote = await quoteFor(service);
+  const baseInput = {
+    orderId: 'order-2', quoteId: quote.id, quoteFingerprint: quote.fingerprint, expectedTotalMinor: quote.totalMinor,
+  };
+
+  const unavailable = await service.submitOrder({
+    ...baseInput,
+    attemptId: 'attempt-unavailable',
+    paymentMethod: { token: 'mock_visa_0004_unavailable', brand: 'Visa', last4: '0004' },
+  }, 'user-1');
+
+  const retry = await service.submitOrder({
+    ...baseInput,
+    attemptId: 'attempt-after-unavailable',
+    paymentMethod: { token: 'mock_visa_4242', brand: 'Visa', last4: '4242' },
+  }, 'user-1');
+
+  assert.equal(unavailable.status, 'payment_failed');
+  assert.equal(retry.status, 'completed');
+  assert.equal(orderRepository.findById('order-2')?.status, 'submited');
+});
+
+test('an action-required payment does not block a subsequent payment attempt', async () => {
+  const { service } = createService();
+  const quote = await quoteFor(service);
+  const baseInput = {
+    orderId: 'order-2', quoteId: quote.id, quoteFingerprint: quote.fingerprint, expectedTotalMinor: quote.totalMinor,
+  };
+
+  const actionRequired = await service.submitOrder({
+    ...baseInput,
+    attemptId: 'attempt-action-required',
+    paymentMethod: { token: 'mock_visa_0003_action', brand: 'Visa', last4: '0003' },
+  }, 'user-1');
+
+  const retry = await service.submitOrder({
+    ...baseInput,
+    attemptId: 'attempt-after-action-required',
+    paymentMethod: { token: 'mock_visa_4242', brand: 'Visa', last4: '4242' },
+  }, 'user-1');
+
+  assert.equal(actionRequired.status, 'action_required');
+  assert.equal(retry.status, 'completed');
+});
+
 test('a delivery failure voids the authorization and keeps the order unsubmitted', async () => {
   const { service, orderRepository } = createService();
   const quote = await service.createQuote({

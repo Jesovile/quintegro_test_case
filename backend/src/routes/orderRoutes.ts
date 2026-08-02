@@ -334,6 +334,7 @@ export function createOrderRoutes(orderController: OrderController): Router {
    *                   type: string
    *                   example: "Internal server error"
    */
+  router.post('/:orderId/quote', (req, res) => orderController.createCheckoutQuote(req, res));
   router.post('/:orderId', (req, res) => orderController.submitOrder(req, res));
 
   return router;

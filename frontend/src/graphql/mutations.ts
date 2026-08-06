@@ -16,6 +16,15 @@ export const SUBMIT_ORDER = gql`
   }
 `;
 
+export const PROCESS_PAYMENT = gql`
+  mutation ProcessPayment($orderId: ID!, $input: CheckoutInput!) {
+    processPayment(orderId: $orderId, input: $input) {
+      success
+      error
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER = gql`
   mutation DeleteProductFromOrder($orderId: ID!, $productId: ID!) {

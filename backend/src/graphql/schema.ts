@@ -30,6 +30,7 @@ export const typeDefs = gql`
   enum OrderStatus {
     created
     submited
+    waiting_payment
     finished
   }
 
@@ -42,6 +43,36 @@ export const typeDefs = gql`
   input LoginInput {
     login: String!
     password: String!
+  }
+
+  enum PaymentMethod {
+    card
+    paypal
+  }
+
+  input DeliveryInput {
+    postalCode: String!
+    street: String!
+    city: String!
+  }
+
+  input PaymentInput {
+    method: PaymentMethod!
+    cardNumber: String
+    cardholderName: String
+    expiryDate: String
+    cvv: String
+    paypalEmail: String
+  }
+
+  input CheckoutInput {
+    delivery: DeliveryInput!
+    payment: PaymentInput!
+  }
+
+  type CheckoutResponse {
+    success: Boolean!
+    error: String
   }
 
   type LoginResponse {
@@ -59,5 +90,6 @@ export const typeDefs = gql`
     login(input: LoginInput!): LoginResponse!
     submitOrder(orderId: ID!): Boolean!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
+    processPayment(orderId: ID!, input: CheckoutInput!): CheckoutResponse!
   }
 `;

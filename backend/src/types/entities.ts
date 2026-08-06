@@ -25,10 +25,12 @@ export interface ProductRecord {
   image: string;
 }
 
+export type OrderStatus = 'created' | 'submited' | 'waiting_payment' | 'finished';
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
   products: Array<{
     id: string;
@@ -40,7 +42,7 @@ export interface OrderRecord {
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   products: Array<{
     product: ProductRecord;
     amount: number;
@@ -53,4 +55,36 @@ export interface PromoEntity {
   id: string;
   discount: number;
   dueDate: number;
+}
+
+export interface DeliveryDetails {
+  postalCode: string;
+  street: string;
+  city: string;
+}
+
+export interface PaymentDetails {
+  method: 'card' | 'paypal';
+  cardNumber?: string;
+  cardholderName?: string;
+  expiryDate?: string;
+  cvv?: string;
+  paypalEmail?: string;
+}
+
+export interface CheckoutInput {
+  delivery: DeliveryDetails;
+  payment: PaymentDetails;
+}
+
+export type CheckoutValidationErrorCode =
+  | 'ORDER_NOT_FOUND'
+  | 'INVALID_ORDER_STATUS'
+  | 'INVALID_DELIVERY'
+  | 'INVALID_PAYMENT';
+
+export interface CheckoutValidationResult {
+  success: boolean;
+  error?: string;
+  errorCode?: CheckoutValidationErrorCode;
 }

@@ -269,9 +269,62 @@ export function createOrderRoutes(orderController: OrderController): Router {
 
   /**
    * @swagger
+   * /order/{orderId}/payment:
+   *   post:
+   *     summary: Validate checkout delivery and payment details
+   *     tags: [Orders]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: orderId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [delivery, payment]
+   *             properties:
+   *               delivery:
+   *                 type: object
+   *                 required: [postalCode, street, city]
+   *                 properties:
+   *                   postalCode: { type: string, example: "00-001" }
+   *                   street: { type: string, example: "Main Street 1" }
+   *                   city: { type: string, example: "Warsaw" }
+   *               payment:
+   *                 type: object
+   *                 required: [method]
+   *                 properties:
+   *                   method: { type: string, enum: [card, paypal] }
+   *                   cardNumber: { type: string, example: "4242 4242 4242 4242" }
+   *                   cardholderName: { type: string, example: "JOHN DOE" }
+   *                   expiryDate: { type: string, example: "12/30" }
+   *                   cvv: { type: string, example: "123" }
+   *                   paypalEmail: { type: string, example: "john@example.com" }
+   *     responses:
+   *       200:
+   *         description: Checkout data is valid
+   *       400:
+   *         description: Invalid order status, delivery or payment data
+   *       403:
+   *         description: Invalid or missing authentication token
+   *       404:
+   *         description: Order not found or access denied
+   *       500:
+   *         description: Internal server error
+   */
+  router.post('/:orderId/payment', (req, res) => orderController.processPayment(req, res));
+
+  /**
+   * @swagger
    * /order/{orderId}:
    *   post:
-   *     summary: Submit an order (change status to 'submited')
+   *     summary: Submit an order (change status to 'waiting_payment')
    *     tags: [Orders]
    *     security:
    *       - bearerAuth: []

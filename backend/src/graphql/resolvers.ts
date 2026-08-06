@@ -1,6 +1,7 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { CheckoutInput } from '../types/entities';
 
 export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
   const extractUserIdFromToken = (context: any): string | null => {
@@ -112,6 +113,23 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
           return success;
         } catch (error) {
           throw new Error('Failed to submit order');
+        }
+      },
+
+      processPayment: async (parent: any, { orderId, input }: { orderId: string, input: CheckoutInput }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        try {
+          const result = orderService.processPayment(orderId, userId, input);
+          return {
+            success: result.success,
+            error: result.error || null
+          };
+        } catch (error) {
+          throw new Error('Failed to process payment');
         }
       },
 

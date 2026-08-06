@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
+import { CheckoutInput } from '../types/entities';
 
 interface ProductItem {
   id: string;
@@ -156,6 +157,29 @@ export class OrderController {
       return res.status(200).send();
     } catch (error) {
       console.error('Submit order error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  async processPayment(req: Request, res: Response) {
+    try {
+      const userId = this.extractUserIdFromToken(req);
+
+      if (!userId) {
+        return res.status(403).json({ error: 'Invalid or missing authentication token' });
+      }
+
+      const { orderId } = req.params;
+      const result = this.orderService.processPayment(orderId, userId, req.body as CheckoutInput);
+
+      if (!result.success) {
+        const status = result.errorCode === 'ORDER_NOT_FOUND' ? 404 : 400;
+        return res.status(status).json({ error: result.error });
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Process payment error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

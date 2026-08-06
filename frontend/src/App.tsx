@@ -4,6 +4,7 @@ import MainLayout from './components/MainLayout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import OrderPage from './pages/OrderPage'
+import CheckoutPage from './pages/CheckoutPage'
 
 const App: React.FC = () => {
   return (
@@ -12,8 +13,8 @@ const App: React.FC = () => {
         <Switch>
           <Route exact path="/" component={HomePage} />
           <Route path="/login" component={LoginPage} />
-          <Route path="/order" component={OrderPage} />
-          <Route path='/hui' component={() => <h1>HUI 888123</h1>}/>
+          <Route path="/order/:orderId/checkout" component={CheckoutPage} />
+          <Route exact path="/order" component={OrderPage} />
         </Switch>
       </MainLayout>
     </Router>

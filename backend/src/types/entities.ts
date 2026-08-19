@@ -23,12 +23,34 @@ export interface ProductRecord {
   title: string;
   description: string;
   image: string;
+  price: number;
+  stock: number;
+}
+
+export type OrderStatus = 'created' | 'reserved' | 'paid' | 'submited' | 'finished';
+
+export interface AddressRecord {
+  fullName: string;
+  country: string;
+  city: string;
+  street: string;
+  postalCode: string;
+  phone: string;
+}
+
+export interface DeliveryOptionRecord {
+  id: string;
+  provider: string;
+  title: string;
+  price: number;
+  etaDays: number;
+  description: string;
 }
 
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
   products: Array<{
     id: string;
@@ -36,17 +58,23 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  address?: AddressRecord;
+  deliveryOption?: DeliveryOptionRecord;
+  reservedUntil?: number;
 }
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   products: Array<{
     product: ProductRecord;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  address?: AddressRecord;
+  deliveryOption?: DeliveryOptionRecord;
+  reservedUntil?: number;
 }
 
 export interface PromoEntity {

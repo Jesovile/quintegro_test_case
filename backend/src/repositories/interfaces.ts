@@ -21,6 +21,7 @@ export interface IOrderRepository {
 export interface IProductRepository {
   findById(id: string): ProductRecord | undefined;
   findAll(): ProductRecord[];
+  update(product: ProductRecord): void;
 }
 
 export interface IPromoRepository {

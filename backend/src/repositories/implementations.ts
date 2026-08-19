@@ -57,25 +57,33 @@ export class InMemoryProductRepository implements IProductRepository {
       id: "product-1",
       title: "Laptop",
       description: "High-performance laptop with latest specifications and great battery life. Perfect for work and gaming.",
-      image: "/productImg/laptop.svg"
+      image: "/productImg/laptop.svg",
+      price: 1299.99,
+      stock: 15
     },
     {
       id: "product-2",
       title: "Smartphone",
       description: "Modern smartphone with advanced camera system and long-lasting battery. Features the latest mobile technology.",
-      image: "/productImg/smartphone.svg"
+      image: "/productImg/smartphone.svg",
+      price: 899.99,
+      stock: 8
     },
     {
       id: "product-3",
       title: "Headphones",
       description: "Wireless noise-canceling headphones with premium sound quality and comfortable design for extended use.",
-      image: "/productImg/headphones.svg"
+      image: "/productImg/headphones.svg",
+      price: 199.99,
+      stock: 5
     },
     {
       id: "product-4",
       title: "Tablet",
       description: "Lightweight tablet perfect for entertainment and productivity. Features a high-resolution display and fast processor.",
-      image: "/productImg/tablet.svg"
+      image: "/productImg/tablet.svg",
+      price: 599.99,
+      stock: 5
     }
   ];
 
@@ -85,6 +93,13 @@ export class InMemoryProductRepository implements IProductRepository {
 
   findAll(): ProductRecord[] {
     return [...this.products];
+  }
+
+  update(product: ProductRecord): void {
+    const index = this.products.findIndex(p => p.id === product.id);
+    if (index !== -1) {
+      this.products[index] = product;
+    }
   }
 }
 

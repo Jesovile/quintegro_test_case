@@ -21,6 +21,23 @@ export const GET_ORDERS = gql`
         discount
         dueDate
       }
+      address {
+        fullName
+        country
+        city
+        street
+        postalCode
+        phone
+      }
+      deliveryOption {
+        id
+        provider
+        title
+        price
+        etaDays
+        description
+      }
+      reservedUntil
     }
   }
 `;
@@ -46,6 +63,23 @@ export const GET_ORDER = gql`
         discount
         dueDate
       }
+      address {
+        fullName
+        country
+        city
+        street
+        postalCode
+        phone
+      }
+      deliveryOption {
+        id
+        provider
+        title
+        price
+        etaDays
+        description
+      }
+      reservedUntil
     }
   }
 `;
@@ -64,6 +98,20 @@ export const GET_PROMO = gql`
       id
       discount
       dueDate
+    }
+  }
+`;
+
+// Query to get available delivery options for an address
+export const GET_DELIVERY_OPTIONS = gql`
+  query GetDeliveryOptions($orderId: ID!, $address: AddressInput!) {
+    deliveryOptions(orderId: $orderId, address: $address) {
+      id
+      provider
+      title
+      price
+      etaDays
+      description
     }
   }
 `;

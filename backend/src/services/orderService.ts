@@ -118,7 +118,7 @@ export class OrderService {
 
   async submitOrder(orderId: string, userId: string): Promise<boolean> {
     const order = this.orderRepository.findById(orderId);
-    
+
     if (!order) {
       return false;
     }
@@ -127,8 +127,13 @@ export class OrderService {
       return false;
     }
 
-    // Check if order is in 'created' status
-    if (order.status !== 'created') {
+    // Идемпотентность: повторный вызов после уже успешной отправки в сборку не должен падать.
+    if (order.status === 'submited') {
+      return true;
+    }
+
+    // Отправить в сборку можно только после успешной оплаты.
+    if (order.status !== 'paid') {
       return false;
     }
 
@@ -183,7 +188,10 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      address: order.address,
+      deliveryOption: order.deliveryOption,
+      reservedUntil: order.reservedUntil
     };
   }
 }

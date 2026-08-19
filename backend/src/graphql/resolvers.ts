@@ -1,8 +1,14 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { CheckoutService } from '../services/checkoutService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
+export const createResolvers = (
+  orderService: OrderService,
+  authService: AuthService,
+  promoService: PromoService,
+  checkoutService: CheckoutService
+) => {
   const extractUserIdFromToken = (context: any): string | null => {
     const authHeader = context.req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -80,6 +86,19 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to fetch promo');
         }
+      },
+
+      deliveryOptions: async (parent: any, { orderId, address }: { orderId: string, address: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        const options = checkoutService.getDeliveryOptions(orderId, userId, address);
+        if (options === null) {
+          throw new Error('Order not found or access denied');
+        }
+        return options;
       }
     },
 
@@ -130,6 +149,32 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         } catch (error) {
           throw new Error('Failed to delete product from order');
         }
+      },
+
+      reserveOrder: async (parent: any, { orderId, address, deliveryOptionId }: { orderId: string, address: any, deliveryOptionId: string }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        const result = await checkoutService.reserveOrder(orderId, userId, address, deliveryOptionId);
+        if (result === null) {
+          throw new Error('Order not found or access denied');
+        }
+        return result;
+      },
+
+      payOrder: async (parent: any, { orderId, payment }: { orderId: string, payment: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        const result = await checkoutService.payOrder(orderId, userId, payment);
+        if (result === null) {
+          throw new Error('Order not found or access denied');
+        }
+        return result;
       }
     }
   };

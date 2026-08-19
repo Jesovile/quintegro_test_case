@@ -40,3 +40,39 @@ export const DELETE_PRODUCT_FROM_ORDER = gql`
     }
   }
 `;
+
+// Mutation to reserve order items ahead of payment
+export const RESERVE_ORDER = gql`
+  mutation ReserveOrder($orderId: ID!, $address: AddressInput!, $deliveryOptionId: ID!) {
+    reserveOrder(orderId: $orderId, address: $address, deliveryOptionId: $deliveryOptionId) {
+      success
+      reservedUntil
+      errorCode
+      issues {
+        productId
+        productTitle
+        requested
+        available
+      }
+      order {
+        orderId
+        status
+      }
+    }
+  }
+`;
+
+// Mutation to charge payment for a reserved order
+export const PAY_ORDER = gql`
+  mutation PayOrder($orderId: ID!, $payment: PaymentInput!) {
+    payOrder(orderId: $orderId, payment: $payment) {
+      success
+      errorCode
+      errorMessage
+      order {
+        orderId
+        status
+      }
+    }
+  }
+`;

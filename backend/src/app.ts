@@ -16,7 +16,11 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
+import { CheckoutService } from './services/checkoutService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { MockCourierProvider } from './providers/delivery/mockCourier';
+import { MockPickupProvider } from './providers/delivery/mockPickup';
+import { MockPaymentProvider } from './providers/payment/mockProvider';
 
 export class App {
   public app: express.Application;
@@ -109,9 +113,16 @@ export class App {
     const authService = new AuthService(authRepository, userRepository);
     const orderService = new OrderService(orderRepository, productRepository, promoRepository);
     const promoService = new PromoService(promoRepository);
+    const checkoutService = new CheckoutService(
+      orderService,
+      orderRepository,
+      productRepository,
+      [new MockCourierProvider(), new MockPickupProvider()],
+      new MockPaymentProvider()
+    );
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, checkoutService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

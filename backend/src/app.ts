@@ -8,86 +8,143 @@ import { errorTestMiddleware } from './middleware/errorTestMiddleware';
 import { createApolloServer } from './graphql/server';
 import { createAuthRoutes } from './routes/authRoutes';
 import { createOrderRoutes } from './routes/orderRoutes';
+import { createCheckoutRoutes } from './routes/checkoutRoutes';
+import { createWebhookRoutes } from './routes/webhookRoutes';
 import { createPromoRoutes } from './routes/promoRoutes';
 import { createResetRoutes } from './routes/resetRoutes';
 import { AuthController } from './controllers/authController';
 import { OrderController } from './controllers/orderController';
+import { CheckoutController } from './controllers/checkoutController';
+import { WebhookController } from './controllers/webhookController';
 import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
-import { OrderService } from './services/orderService';
+import { OrderQueryService } from './services/orderQueryService';
+import { CartService } from './services/cartService';
+import { PricingService } from './services/pricingService';
+import { CheckoutService } from './services/checkoutService';
+import { PaymentService } from './services/paymentService';
+import { OrderStatusService } from './services/orderStatusService';
 import { PromoService } from './services/promoService';
-import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { EncryptionService } from './services/encryptionService';
+import {
+  InMemoryUserRepository,
+  InMemoryAuthRepository,
+  InMemoryOrderRepository,
+  InMemoryProductRepository,
+  InMemoryPromoRepository,
+  MockBankService,
+} from './repositories/implementations';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+
+  // Shared repositories — single source of truth for all layers (REST + GraphQL)
+  private orderRepository: InMemoryOrderRepository;
+  private bankService: MockBankService;
 
   constructor() {
     this.app = express();
+
+    // Build shared repos once
+    const userRepository = new InMemoryUserRepository();
+    const authRepository = new InMemoryAuthRepository();
+    this.orderRepository = new InMemoryOrderRepository();
+    const productRepository = new InMemoryProductRepository();
+    const promoRepository = new InMemoryPromoRepository();
+    this.bankService = new MockBankService();
+
+    // Services
+    const encryptionService = new EncryptionService();
+    const authService = new AuthService(authRepository, userRepository);
+    const promoService = new PromoService(promoRepository);
+    const orderStatusService = new OrderStatusService();
+    const orderQueryService = new OrderQueryService(this.orderRepository, productRepository);
+    const cartService = new CartService(this.orderRepository, orderQueryService);
+    const pricingService = new PricingService(promoRepository);
+    const checkoutService = new CheckoutService(
+      this.orderRepository,
+      promoRepository,
+      pricingService,
+      this.bankService,
+      orderStatusService,
+    );
+    const paymentService = new PaymentService(this.orderRepository, this.bankService, orderStatusService);
+
     this.initializeMiddlewares();
-    this.initializeRoutes();
+    this.initializeRoutes({
+      authService,
+      orderQueryService,
+      cartService,
+      pricingService,
+      checkoutService,
+      paymentService,
+      promoService,
+    });
     this.initializeSwagger();
-    this.initializeGraphQL();
+    this.initializeGraphQL({
+      authService,
+      orderQueryService,
+      cartService,
+      pricingService,
+      checkoutService,
+      paymentService,
+      promoService,
+      encryptionService,
+    });
   }
 
   private initializeMiddlewares(): void {
-    this.app.use(helmet({ contentSecurityPolicy: (process.env.NODE_ENV === 'production') ? undefined : false }));
+    this.app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false }));
     this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
-    
-    // Add delay to all API requests
     this.app.use(delayMiddleware(1500));
-    
-    // Add error test middleware (returns 500 on every 3rd request)
     this.app.use(errorTestMiddleware);
-    
-    // Serve static files for product images
     this.app.use('/productImg', express.static('public/productImg'));
   }
 
-  private initializeRoutes(): void {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+  private initializeRoutes(services: {
+    authService: AuthService;
+    orderQueryService: OrderQueryService;
+    cartService: CartService;
+    pricingService: PricingService;
+    checkoutService: CheckoutService;
+    paymentService: PaymentService;
+    promoService: PromoService;
+  }): void {
+    const { authService, orderQueryService, cartService, pricingService, checkoutService, paymentService, promoService } = services;
 
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
-    // Initialize controllers
     const authController = new AuthController(authService);
-    const orderController = new OrderController(orderService, authService);
+    const orderController = new OrderController(orderQueryService, cartService, pricingService, authService);
+    const checkoutController = new CheckoutController(checkoutService, authService);
+    const webhookController = new WebhookController(paymentService);
     const promoController = new PromoController(promoService);
 
-    // Setup routes
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
+    this.app.use('/api/order', createCheckoutRoutes(checkoutController));
+    this.app.use('/api/webhooks', createWebhookRoutes(webhookController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(this.orderRepository, this.bankService));
 
-    // Health check endpoint
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', (_req, res) => {
       res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
     });
 
-    // Root endpoint
-    this.app.get('/', (req, res) => {
+    this.app.get('/', (_req, res) => {
       res.json({
         message: 'Quintegro API',
-        version: '1.0.0',
+        version: '2.0.0',
         endpoints: {
           docs: '/api-docs',
           health: '/health',
           login: '/api/login',
           orders: '/api/order',
-          promos: '/api/promo'
-        }
+          checkout: '/api/order/:orderId/checkout',
+          cancel: '/api/order/:orderId/cancel',
+          webhook: '/api/webhooks/payment',
+          promos: '/api/promo',
+        },
       });
     });
   }
@@ -96,32 +153,21 @@ export class App {
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   }
 
-  private async initializeGraphQL(): Promise<void> {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
-    // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
-    await apolloServer.start();
-
-    // Apply Apollo Server middleware
-    apolloServer.applyMiddleware({ 
-      app: this.app, 
-      path: '/graphql',
-      cors: false // We're already using CORS middleware
+  private initializeGraphQL(services: {
+    authService: AuthService;
+    orderQueryService: OrderQueryService;
+    cartService: CartService;
+    pricingService: PricingService;
+    checkoutService: CheckoutService;
+    paymentService: PaymentService;
+    promoService: PromoService;
+    encryptionService: EncryptionService;
+  }): void {
+    const apolloServer = createApolloServer(services);
+    apolloServer.start().then(() => {
+      apolloServer.applyMiddleware({ app: this.app, path: '/graphql', cors: false });
+      console.log(`🚀 GraphQL server ready at http://localhost:3000${apolloServer.graphqlPath}`);
     });
-
-    console.log(`🚀 GraphQL server ready at http://localhost:3000${apolloServer.graphqlPath}`);
   }
 
   public listen(port: number): void {

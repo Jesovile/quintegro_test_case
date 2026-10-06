@@ -1,5 +1,20 @@
 import { gql } from '@apollo/client';
 
+export const CREATE_ORDER = gql`
+  mutation CreateOrder {
+    createOrder {
+      orderId
+      status
+      createdAt
+      products {
+        product { id title description image }
+        amount
+        price
+      }
+    }
+  }
+`;
+
 // Mutation for user login
 export const LOGIN = gql`
   mutation Login($input: LoginInput!) {

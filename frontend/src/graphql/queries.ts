@@ -6,6 +6,8 @@ export const GET_ORDERS = gql`
     orders {
       orderId
       status
+      paymentId
+      paymentUrl
       products {
         product {
           id
@@ -54,6 +56,12 @@ export const GET_ORDER = gql`
 export const GET_ORDER_SUM = gql`
   query GetOrderSum($orderId: ID!, $products: [ProductInput!]!, $promo: String) {
     orderSum(orderId: $orderId, products: $products, promo: $promo)
+  }
+`;
+
+export const GET_ENCRYPTION_KEY = gql`
+  query GetEncryptionKey {
+    encryptionPublicKey
   }
 `;
 

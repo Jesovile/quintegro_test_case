@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { OrderService } from '../services/orderService';
+import { OrderQueryService } from '../services/orderQueryService';
+import { CartService } from '../services/cartService';
+import { PricingService } from '../services/pricingService';
 import { AuthService } from '../services/authService';
 
 interface ProductItem {
@@ -15,35 +17,25 @@ interface OrderSumRequest {
 
 export class OrderController {
   constructor(
-    private orderService: OrderService,
-    private authService: AuthService
+    private orderQueryService: OrderQueryService,
+    private cartService: CartService,
+    private pricingService: PricingService,
+    private authService: AuthService,
   ) {}
 
-  private extractUserIdFromToken(req: Request): string | null {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = this.authService.verifyToken(token);
-    
-    if (!decoded || !decoded.userId) {
-      return null;
-    }
-
-    return decoded.userId;
+  private extractUserId(req: Request): string | null {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) return null;
+    const decoded = this.authService.verifyToken(auth.substring(7));
+    return decoded?.userId ?? null;
   }
 
   async getOrders(req: Request, res: Response) {
     try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
+      const userId = this.extractUserId(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
 
-      const orders = await this.orderService.getOrdersByUserId(userId);
+      const orders = await this.orderQueryService.getOrdersByUserId(userId);
       return res.status(200).json(orders);
     } catch (error) {
       console.error('Get orders error:', error);
@@ -53,18 +45,12 @@ export class OrderController {
 
   async getOrderById(req: Request, res: Response) {
     try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
+      const userId = this.extractUserId(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
 
       const { orderId } = req.params;
-      const order = await this.orderService.getOrderById(orderId, userId);
-
-      if (!order) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
+      const order = await this.orderQueryService.getOrderById(orderId, userId);
+      if (!order) return res.status(404).json({ error: 'Order not found or access denied' });
 
       return res.status(200).json(order);
     } catch (error) {
@@ -75,30 +61,24 @@ export class OrderController {
 
   async calculateOrderSum(req: Request, res: Response) {
     try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
+      const userId = this.extractUserId(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
 
-      const { orderId } = req.params;
       const { products, promo } = req.body as OrderSumRequest;
 
       if (!products || !Array.isArray(products)) {
         return res.status(400).json({ error: 'Products array is required' });
       }
-
-      // Validate products structure
-      for (const product of products) {
-        if (!product.id || typeof product.amount !== 'number' || typeof product.price !== 'number') {
-          return res.status(400).json({ error: 'Invalid product structure. Each product must have id, amount, and price' });
+      for (const p of products) {
+        if (!p.id || typeof p.amount !== 'number' || typeof p.price !== 'number') {
+          return res.status(400).json({ error: 'Invalid product structure: each product must have id, amount, and price' });
         }
-        if (product.amount < 0 || product.price < 0) {
+        if (p.amount < 0 || p.price < 0) {
           return res.status(400).json({ error: 'Amount and price must be non-negative' });
         }
       }
 
-      const sum = this.orderService.calculateOrderSum(products, promo);
+      const sum = this.pricingService.calculateOrderSum(products, promo);
       return res.status(200).json(sum);
     } catch (error) {
       console.error('Calculate order sum error:', error);
@@ -106,56 +86,35 @@ export class OrderController {
     }
   }
 
-  async deleteProductFromOrder(req: Request, res: Response) {
+  async createOrder(req: Request, res: Response) {
     try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
+      const userId = this.extractUserId(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
 
-      const { orderId, productId } = req.params;
-
-      if (!orderId || !productId) {
-        return res.status(400).json({ error: 'Order ID and Product ID are required' });
-      }
-
-      const updatedOrder = await this.orderService.deleteProductFromOrder(orderId, productId, userId);
-
-      if (!updatedOrder) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
-
-      return res.status(200).json(updatedOrder);
+      const order = await this.cartService.createOrder(userId);
+      return res.status(201).json(order);
     } catch (error) {
-      console.error('Delete product from order error:', error);
+      console.error('Create order error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
 
-  async submitOrder(req: Request, res: Response) {
+  async deleteProductFromOrder(req: Request, res: Response) {
     try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
+      const userId = this.extractUserId(req);
+      if (!userId) return res.status(403).json({ error: 'Invalid or missing authentication token' });
+
+      const { orderId, productId } = req.params;
+      if (!orderId || !productId) {
+        return res.status(400).json({ error: 'Order ID and Product ID are required' });
       }
 
-      const { orderId } = req.params;
+      const updatedOrder = await this.cartService.deleteProductFromOrder(orderId, productId, userId);
+      if (!updatedOrder) return res.status(404).json({ error: 'Order not found or access denied' });
 
-      if (!orderId) {
-        return res.status(400).json({ error: 'Order ID is required' });
-      }
-
-      const success = await this.orderService.submitOrder(orderId, userId);
-
-      if (!success) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
-
-      return res.status(200).send();
+      return res.status(200).json(updatedOrder);
     } catch (error) {
-      console.error('Submit order error:', error);
+      console.error('Delete product from order error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

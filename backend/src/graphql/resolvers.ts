@@ -1,136 +1,126 @@
-import { OrderService } from '../services/orderService';
+import { OrderQueryService } from '../services/orderQueryService';
+import { CartService } from '../services/cartService';
+import { PricingService } from '../services/pricingService';
+import { CheckoutService, CheckoutError } from '../services/checkoutService';
+import { PaymentService } from '../services/paymentService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { EncryptionService } from '../services/encryptionService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
-  const extractUserIdFromToken = (context: any): string | null => {
-    const authHeader = context.req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
+interface Services {
+  orderQueryService: OrderQueryService;
+  cartService: CartService;
+  pricingService: PricingService;
+  checkoutService: CheckoutService;
+  paymentService: PaymentService;
+  authService: AuthService;
+  promoService: PromoService;
+  encryptionService: EncryptionService;
+}
 
-    const token = authHeader.substring(7);
-    const decoded = authService.verifyToken(token);
-    
-    if (!decoded || !decoded.userId) {
-      return null;
-    }
+export const createResolvers = (services: Services) => {
+  const {
+    orderQueryService,
+    cartService,
+    pricingService,
+    checkoutService,
+    paymentService,
+    authService,
+    promoService,
+    encryptionService,
+  } = services;
 
-    return decoded.userId;
+  const extractUserId = (context: any): string | null => {
+    const auth = context.req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) return null;
+    const decoded = authService.verifyToken(auth.substring(7));
+    return decoded?.userId ?? null;
   };
 
   return {
     Query: {
-      orders: async (parent: any, args: any, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          return await orderService.getOrdersByUserId(userId);
-        } catch (error) {
-          throw new Error('Failed to fetch orders');
-        }
+      orders: async (_: any, __: any, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        return orderQueryService.getOrdersByUserId(userId);
       },
 
-      order: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          const order = await orderService.getOrderById(orderId, userId);
-          if (!order) {
-            throw new Error('Order not found or access denied');
-          }
-          return order;
-        } catch (error) {
-          throw new Error('Failed to fetch order');
-        }
+      order: async (_: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        const order = await orderQueryService.getOrderById(orderId, userId);
+        if (!order) throw new Error('Order not found or access denied');
+        return order;
       },
 
-      orderSum: async (parent: any, { orderId, products, promo }: { orderId: string, products: any[], promo?: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          return orderService.calculateOrderSum(products, promo);
-        } catch (error) {
-          throw new Error('Failed to calculate order sum');
-        }
+      orderSum: async (_: any, { products, promo }: { orderId: string; products: any[]; promo?: string }, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        return pricingService.calculateOrderSum(products, promo);
       },
 
-      promo: async (parent: any, { promoId }: { promoId: string }, context: any) => {
-        try {
-          const validation = promoService.validatePromo(promoId);
-          
-          if (!validation.isValid) {
-            if (validation.error === 'Promo not found') {
-              throw new Error('Promo not found');
-            } else if (validation.error === 'Promo expired') {
-              throw new Error('Promo expired');
-            }
-          }
+      promo: async (_: any, { promoId }: { promoId: string }) => {
+        const validation = promoService.validatePromo(promoId);
+        if (!validation.isValid) throw new Error(validation.error ?? 'Invalid promo');
+        return validation.promo;
+      },
 
-          return validation.promo;
-        } catch (error) {
-          throw new Error('Failed to fetch promo');
-        }
-      }
+      encryptionPublicKey: () => encryptionService.publicKeyPem,
     },
 
     Mutation: {
-      login: async (parent: any, { input }: { input: { login: string, password: string } }, context: any) => {
-        try {
-          const token = await authService.authenticateUser(input.login, input.password);
-          
-          if (!token) {
-            throw new Error('Invalid credentials');
-          }
+      login: async (_: any, { input }: { input: { login: string; password: string } }) => {
+        const token = await authService.authenticateUser(input.login, input.password);
+        if (!token) throw new Error('Invalid credentials');
+        return { token };
+      },
 
-          return { token };
-        } catch (error) {
-          throw new Error('Login failed');
+      createOrder: async (_: any, __: any, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        return cartService.createOrder(userId);
+      },
+
+      checkout: async (_: any, { orderId, input }: { orderId: string; input: any }, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        try {
+          return await checkoutService.checkout(orderId, userId, input);
+        } catch (err) {
+          if (err instanceof CheckoutError) throw new Error(err.message);
+          throw err;
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
+      cancelOrder: async (_: any, { orderId }: { orderId: string }, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
         try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
-        } catch (error) {
-          throw new Error('Failed to submit order');
+          await checkoutService.cancelOrder(orderId, userId);
+          return true;
+        } catch (err) {
+          if (err instanceof CheckoutError) throw new Error(err.message);
+          throw err;
         }
       },
 
-      deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
+      pay: async (_: any, { paymentId, card }: { paymentId: string; card: { encrypted: string } }) => {
+        const decrypted = encryptionService.decrypt(card.encrypted);
+        const cardData = JSON.parse(decrypted) as { number: string; expiry: string; cvv: string };
+        return paymentService.pay(paymentId, cardData);
+      },
 
-        try {
-          const updatedOrder = await orderService.deleteProductFromOrder(orderId, productId, userId);
-          if (!updatedOrder) {
-            throw new Error('Order not found or access denied');
-          }
-          return updatedOrder;
-        } catch (error) {
-          throw new Error('Failed to delete product from order');
-        }
-      }
-    }
+      paymentWebhook: async (_: any, { paymentId }: { paymentId: string }) => {
+        return paymentService.handleWebhook(paymentId);
+      },
+
+      deleteProductFromOrder: async (_: any, { orderId, productId }: { orderId: string; productId: string }, context: any) => {
+        const userId = extractUserId(context);
+        if (!userId) throw new Error('Authentication required');
+        const updated = await cartService.deleteProductFromOrder(orderId, productId, userId);
+        if (!updated) throw new Error('Order not found or access denied');
+        return updated;
+      },
+    },
   };
 };

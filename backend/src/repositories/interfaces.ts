@@ -14,8 +14,11 @@ export interface IAuthRepository {
 export interface IOrderRepository {
   findById(orderId: string): OrderRecord | undefined;
   findByUserId(userId: string): OrderRecord[];
+  findByPaymentId(paymentId: string): OrderRecord | undefined;
   findAll(): OrderRecord[];
+  save(order: OrderRecord): void;
   update(order: OrderRecord): void;
+  reset(): void;
 }
 
 export interface IProductRepository {
@@ -26,4 +29,27 @@ export interface IProductRepository {
 export interface IPromoRepository {
   findById(id: string): PromoEntity | undefined;
   findAll(): PromoEntity[];
+}
+
+export interface BankPaymentSession {
+  paymentId: string;
+  paymentUrl: string;
+}
+
+export interface CardData {
+  number: string;
+  expiry: string;
+  cvv: string;
+}
+
+export interface BankPaymentResult {
+  paymentId: string;
+  success: boolean;
+  errorCode?: string;
+}
+
+export interface IBankService {
+  initiatePayment(orderId: string, amount: number): BankPaymentSession;
+  processPayment(paymentId: string, cardData?: CardData): BankPaymentResult;
+  reset(): void;
 }

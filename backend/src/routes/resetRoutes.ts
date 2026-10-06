@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import cors from 'cors';
-import { InMemoryOrderRepository } from '../repositories/implementations';
+import { InMemoryOrderRepository, MockBankService } from '../repositories/implementations';
 
-export function createResetRoutes(repositories: InMemoryOrderRepository[]): Router {
+export function createResetRoutes(orderRepository: InMemoryOrderRepository, bankService: MockBankService): Router {
   const router = Router();
 
   router.get('/', cors({ origin: '*' }), (_req, res) => {
-    repositories.forEach(repo => repo.reset());
-    res.json({ status: 'OK', message: 'Order repository reset to default state' });
+    orderRepository.reset();
+    bankService.reset();
+    res.json({ status: 'OK', message: 'Order repository and bank service reset to default state' });
   });
 
   return router;

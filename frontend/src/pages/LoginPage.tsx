@@ -22,8 +22,7 @@ const LoginPage: React.FC = () => {
     }
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     setError('')
 
     try {
@@ -44,12 +43,13 @@ const LoginPage: React.FC = () => {
           <CardTitle className="text-center text-2xl font-semibold text-gray-900">Login</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Login</label>
               <Input
                 type="text"
                 placeholder="Enter your login"
+                tabIndex={2}
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
@@ -63,6 +63,7 @@ const LoginPage: React.FC = () => {
               <Input
                 type="password"
                 placeholder="Enter your password"
+                tabIndex={3}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -80,13 +81,14 @@ const LoginPage: React.FC = () => {
             )}
 
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
+              tabIndex={1}
               className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-              disabled={isLoading}
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              Login
             </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>

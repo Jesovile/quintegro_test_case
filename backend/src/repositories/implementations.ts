@@ -109,6 +109,16 @@ export class InMemoryOrderRepository implements IOrderRepository {
         { id: "product-2", amount: 1, price: 899.99 },
         { id: "product-4", amount: 1, price: 599.99 }
       ]
+    },
+    {
+      orderId: "order-3",
+      userId: "user-1",
+      status: "submited",
+      createAt: Date.now() - 7200000, // 2 hours ago
+      products: [
+        { id: "product-2", amount: 2, price: 899.99 },
+        { id: "product-3", amount: 1, price: 199.99 }
+      ]
     }
   ];
 
@@ -132,6 +142,16 @@ export class InMemoryOrderRepository implements IOrderRepository {
         products: [
           { id: "product-2", amount: 1, price: 899.99 },
           { id: "product-4", amount: 1, price: 599.99 }
+        ]
+      },
+      {
+        orderId: "order-3",
+        userId: "user-1",
+        status: "submited",
+        createAt: Date.now() - 7200000,
+        products: [
+          { id: "product-2", amount: 2, price: 899.99 },
+          { id: "product-3", amount: 1, price: 199.99 }
         ]
       }
     ];

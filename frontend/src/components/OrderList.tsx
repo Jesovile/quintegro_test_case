@@ -25,8 +25,11 @@ interface Order {
   products: OrderItem[]
 }
 
+type OrderTab = 'current' | 'history'
+
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
+  const [activeTab, setActiveTab] = useState<OrderTab>('current')
 
   const { loading, error, refetch } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
@@ -142,35 +145,77 @@ const OrderList: React.FC = () => {
     )
   }
 
+  const currentOrders = orders.filter(order => order.status === 'created')
+  const historyOrders = orders.filter(order => order.status !== 'created')
+  const visibleOrders = activeTab === 'current' ? currentOrders : historyOrders
+
+  const tabs: { id: OrderTab; label: string; count: number }[] = [
+    { id: 'current', label: 'Current', count: currentOrders.length },
+    { id: 'history', label: 'History', count: historyOrders.length }
+  ]
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8 text-gray-900">
         Your Orders
       </h1>
-      
-      {orders.map((order) => (
-        <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
-            Order #{order.orderId} - {order.status}
-          </h2>
-          
-          {order.products.map((item, index) => (
-            <OrderListItem
-              key={item.product.id}
-              product={item.product}
-              amount={item.amount}
-              price={item.price}
-              orderId={order.orderId}
-              onAmountChange={handleAmountChange}
-              onDelete={handleDelete}
-              onSubmitOrder={handleSubmitOrder}
-              status={order.status}
-              isLast={index === order.products.length -1}
-            />
-          ))}
-          <OrderSum orderId={order.orderId} products={order.products} />
-        </div>
-      ))}
+
+      <div role="tablist" className="flex gap-2 mb-6 border-b border-gray-200">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`order-tab-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            aria-controls={`order-tabpanel-${tab.id}`}
+            onClick={() => setActiveTab(tab.id)}
+            className={`-mb-px px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+            }`}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`order-tabpanel-${activeTab}`}
+        aria-labelledby={`order-tab-${activeTab}`}
+      >
+        {visibleOrders.length === 0 ? (
+          <p className="text-center py-12 text-gray-600">
+            {activeTab === 'current' ? 'You have no current orders.' : 'You have no past orders yet.'}
+          </p>
+        ) : (
+          visibleOrders.map((order) => (
+            <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
+                Order #{order.orderId} - {order.status}
+              </h2>
+
+              {order.products.map((item, index) => (
+                <OrderListItem
+                  key={item.product.id}
+                  product={item.product}
+                  amount={item.amount}
+                  price={item.price}
+                  orderId={order.orderId}
+                  onAmountChange={handleAmountChange}
+                  onDelete={handleDelete}
+                  onSubmitOrder={handleSubmitOrder}
+                  status={order.status}
+                  isLast={index === order.products.length -1}
+                />
+              ))}
+              <OrderSum orderId={order.orderId} products={order.products} />
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }

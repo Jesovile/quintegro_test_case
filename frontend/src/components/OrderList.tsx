@@ -4,6 +4,7 @@ import { GET_ORDERS } from '../graphql/queries'
 import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
+import PreviouslyOrdered from './PreviouslyOrdered'
 import { Loader2 } from 'lucide-react'
 
 interface Product {
@@ -159,6 +160,8 @@ const OrderList: React.FC = () => {
       <h1 className="text-3xl font-bold mb-8 text-gray-900">
         Your Orders
       </h1>
+
+      <PreviouslyOrdered orders={historyOrders} />
 
       <div role="tablist" className="flex gap-2 mb-6 border-b border-gray-200">
         {tabs.map((tab) => (

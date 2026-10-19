@@ -1,6 +1,25 @@
 import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
 import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
 
+const PRODUCT_COUNT = 40;
+const CURRENT_ORDER_PRICES = [1299.99, 899.99, 199.99, 599.99];
+
+// Extends the catalog with numbered variants of the base products
+const generateProducts = (base: ProductRecord[], total: number): ProductRecord[] =>
+  Array.from({ length: total - base.length }, (_, i) => {
+    const source = base[i % base.length];
+    const index = base.length + i + 1;
+    return { ...source, id: `product-${index}`, title: `${source.title} #${index}` };
+  });
+
+// One position per product for the current (created) order
+const createCurrentOrderProducts = (): OrderRecord['products'] =>
+  Array.from({ length: PRODUCT_COUNT }, (_, i) => ({
+    id: `product-${i + 1}`,
+    amount: 1,
+    price: CURRENT_ORDER_PRICES[i % CURRENT_ORDER_PRICES.length]
+  }));
+
 export class InMemoryUserRepository implements IUserRepository {
   private users: UserRecord[] = [
     {
@@ -79,6 +98,10 @@ export class InMemoryProductRepository implements IProductRepository {
     }
   ];
 
+  constructor() {
+    this.products.push(...generateProducts(this.products, PRODUCT_COUNT));
+  }
+
   findById(id: string): ProductRecord | undefined {
     return this.products.find(product => product.id === id);
   }
@@ -105,10 +128,7 @@ export class InMemoryOrderRepository implements IOrderRepository {
       userId: "user-1",
       status: "created",
       createAt: Date.now(),
-      products: [
-        { id: "product-2", amount: 1, price: 899.99 },
-        { id: "product-4", amount: 1, price: 599.99 }
-      ]
+      products: createCurrentOrderProducts()
     },
     {
       orderId: "order-3",
@@ -139,10 +159,7 @@ export class InMemoryOrderRepository implements IOrderRepository {
         userId: "user-1",
         status: "created",
         createAt: Date.now(),
-        products: [
-          { id: "product-2", amount: 1, price: 899.99 },
-          { id: "product-4", amount: 1, price: 599.99 }
-        ]
+        products: createCurrentOrderProducts()
       },
       {
         orderId: "order-3",

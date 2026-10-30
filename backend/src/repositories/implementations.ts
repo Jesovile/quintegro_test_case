@@ -2,7 +2,7 @@ import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from 
 import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
 
 const PRODUCT_COUNT = 40;
-const CURRENT_ORDER_PRICES = [1299.99, 899.99, 199.99, 599.99];
+const CURRENT_ORDER_PRICES = [1300, 900, 200, 600];
 
 // Extends the catalog with numbered variants of the base products
 const generateProducts = (base: ProductRecord[], total: number): ProductRecord[] =>
@@ -19,6 +19,36 @@ const createCurrentOrderProducts = (): OrderRecord['products'] =>
     amount: 1,
     price: CURRENT_ORDER_PRICES[i % CURRENT_ORDER_PRICES.length]
   }));
+
+const createSeedOrders = (): OrderRecord[] => [
+  {
+    orderId: "order-1",
+    userId: "user-1",
+    status: "deliver",
+    createAt: Date.now() - 86400000, // 1 day ago
+    products: [
+      { id: "product-1", amount: 1, price: 1300 },
+      { id: "product-3", amount: 2, price: 200 }
+    ]
+  },
+  {
+    orderId: "order-2",
+    userId: "user-1",
+    status: "created",
+    createAt: Date.now(),
+    products: createCurrentOrderProducts()
+  },
+  {
+    orderId: "order-3",
+    userId: "user-1",
+    status: "processing",
+    createAt: Date.now() - 7200000, // 2 hours ago
+    products: [
+      { id: "product-2", amount: 2, price: 900 },
+      { id: "product-3", amount: 1, price: 200 }
+    ]
+  }
+];
 
 export class InMemoryUserRepository implements IUserRepository {
   private users: UserRecord[] = [
@@ -112,66 +142,10 @@ export class InMemoryProductRepository implements IProductRepository {
 }
 
 export class InMemoryOrderRepository implements IOrderRepository {
-  private orders: OrderRecord[] = [
-    {
-      orderId: "order-1",
-      userId: "user-1",
-      status: "finished",
-      createAt: Date.now() - 86400000, // 1 day ago
-      products: [
-        { id: "product-1", amount: 1, price: 1299.99 },
-        { id: "product-3", amount: 2, price: 199.99 }
-      ]
-    },
-    {
-      orderId: "order-2",
-      userId: "user-1",
-      status: "created",
-      createAt: Date.now(),
-      products: createCurrentOrderProducts()
-    },
-    {
-      orderId: "order-3",
-      userId: "user-1",
-      status: "submited",
-      createAt: Date.now() - 7200000, // 2 hours ago
-      products: [
-        { id: "product-2", amount: 2, price: 899.99 },
-        { id: "product-3", amount: 1, price: 199.99 }
-      ]
-    }
-  ];
+  private orders: OrderRecord[] = createSeedOrders();
 
   reset(): void {
-    this.orders = [
-      {
-        orderId: "order-1",
-        userId: "user-1",
-        status: "finished",
-        createAt: Date.now() - 86400000,
-        products: [
-          { id: "product-1", amount: 1, price: 1299.99 },
-          { id: "product-3", amount: 2, price: 199.99 }
-        ]
-      },
-      {
-        orderId: "order-2",
-        userId: "user-1",
-        status: "created",
-        createAt: Date.now(),
-        products: createCurrentOrderProducts()
-      },
-      {
-        orderId: "order-3",
-        userId: "user-1",
-        status: "submited",
-        createAt: Date.now() - 7200000,
-        products: [
-          { id: "product-2", amount: 2, price: 899.99 },
-          { id: "product-3", amount: 1, price: 199.99 }
-        ]
-      }
-    ];
+    this.orders = createSeedOrders();
   }
 
   findById(orderId: string): OrderRecord | undefined {

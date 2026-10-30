@@ -1,19 +1,22 @@
+import { Request } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { DomainError } from '../errors/domainError';
+
+export interface GraphQLContext {
+  req: Request;
+}
+
+const ORDER_NOT_FOUND_MESSAGE = 'Order not found or access denied';
 
 export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
-  const extractUserIdFromToken = (context: any): string | null => {
+  const requireUser = (context: GraphQLContext): string => {
     const authHeader = context.req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
+    const decoded = authHeader?.startsWith('Bearer ') ? authService.verifyToken(authHeader.substring(7)) : null;
 
-    const token = authHeader.substring(7);
-    const decoded = authService.verifyToken(token);
-    
     if (!decoded || !decoded.userId) {
-      return null;
+      throw new DomainError('UNAUTHENTICATED', 'Authentication required');
     }
 
     return decoded.userId;
@@ -21,115 +24,57 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
 
   return {
     Query: {
-      orders: async (parent: any, args: any, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          return await orderService.getOrdersByUserId(userId);
-        } catch (error) {
-          throw new Error('Failed to fetch orders');
-        }
+      orders: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+        return orderService.getOrdersByUserId(requireUser(context));
       },
 
-      order: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      order: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        const order = await orderService.getOrderById(orderId, requireUser(context));
+        if (!order) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
+        return order;
+      },
 
-        try {
-          const order = await orderService.getOrderById(orderId, userId);
-          if (!order) {
-            throw new Error('Order not found or access denied');
+      promo: async (_parent: unknown, { promoId }: { promoId: string }) => {
+        const validation = promoService.validatePromo(promoId);
+
+        if (!validation.isValid) {
+          if (validation.error === 'Promo expired') {
+            throw new DomainError('PROMO_EXPIRED', 'Promo expired');
           }
-          return order;
-        } catch (error) {
-          throw new Error('Failed to fetch order');
-        }
-      },
-
-      orderSum: async (parent: any, { orderId, products, promo }: { orderId: string, products: any[], promo?: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+          throw new DomainError('PROMO_NOT_FOUND', 'Promo not found');
         }
 
-        try {
-          return orderService.calculateOrderSum(products, promo);
-        } catch (error) {
-          throw new Error('Failed to calculate order sum');
-        }
-      },
-
-      promo: async (parent: any, { promoId }: { promoId: string }, context: any) => {
-        try {
-          const validation = promoService.validatePromo(promoId);
-          
-          if (!validation.isValid) {
-            if (validation.error === 'Promo not found') {
-              throw new Error('Promo not found');
-            } else if (validation.error === 'Promo expired') {
-              throw new Error('Promo expired');
-            }
-          }
-
-          return validation.promo;
-        } catch (error) {
-          throw new Error('Failed to fetch promo');
-        }
+        return validation.promo;
       }
     },
 
     Mutation: {
-      login: async (parent: any, { input }: { input: { login: string, password: string } }, context: any) => {
-        try {
-          const token = await authService.authenticateUser(input.login, input.password);
-          
-          if (!token) {
-            throw new Error('Invalid credentials');
-          }
+      login: async (_parent: unknown, { input }: { input: { login: string, password: string } }) => {
+        const token = await authService.authenticateUser(input.login, input.password);
 
-          return { token };
-        } catch (error) {
-          throw new Error('Login failed');
+        if (!token) {
+          throw new DomainError('UNAUTHENTICATED', 'Invalid credentials');
         }
+
+        return { token };
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      deleteProductFromOrder: async (_parent: unknown, { orderId, productId }: { orderId: string, productId: string }, context: GraphQLContext) => {
+        const updatedOrder = await orderService.deleteProductFromOrder(orderId, productId, requireUser(context));
+        if (!updatedOrder) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
-
-        try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
-        } catch (error) {
-          throw new Error('Failed to submit order');
-        }
+        return updatedOrder;
       },
 
-      deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      updateProductAmount: async (_parent: unknown, { orderId, productId, amount }: { orderId: string, productId: string, amount: number }, context: GraphQLContext) => {
+        const updatedOrder = await orderService.updateProductAmount(orderId, productId, amount, requireUser(context));
+        if (!updatedOrder) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
-
-        try {
-          const updatedOrder = await orderService.deleteProductFromOrder(orderId, productId, userId);
-          if (!updatedOrder) {
-            throw new Error('Order not found or access denied');
-          }
-          return updatedOrder;
-        } catch (error) {
-          throw new Error('Failed to delete product from order');
-        }
+        return updatedOrder;
       }
     }
   };

@@ -1,11 +1,12 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
-import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+import { OrderRecord, OrderDTO, ProductRecord } from '../types/entities';
+import { IOrderRepository, IProductRepository } from '../repositories/interfaces';
+import { DomainError } from '../errors/domainError';
+import { calculateOrderTotals } from './pricing';
 
 export class OrderService {
   constructor(
     private orderRepository: IOrderRepository,
-    private productRepository: IProductRepository,
-    private promoRepository: IPromoRepository
+    private productRepository: IProductRepository
   ) {}
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
@@ -27,32 +28,6 @@ export class OrderService {
     return this.transformToDTO(order);
   }
 
-  calculateOrderSum(products: Array<{id: string, amount: number, price: number}>, promoId?: string): number {
-    const subtotal = products.reduce((total, product) => {
-      return total + (product.amount * product.price);
-    }, 0);
-
-    if (!promoId) {
-      return subtotal;
-    }
-
-    // Validate promo
-    const promo = this.promoRepository.findById(promoId);
-    if (!promo) {
-      return subtotal; // Return original sum if promo not found
-    }
-
-    // Check if promo is expired
-    const currentTime = Date.now();
-    if (currentTime > promo.dueDate) {
-      return subtotal; // Return original sum if promo expired
-    }
-
-    // Apply discount
-    const discount = (subtotal * promo.discount) / 100;
-    return subtotal - discount;
-  }
-
   async deleteProductFromOrder(orderId: string, productId: string, userId: string): Promise<OrderDTO | null> {
     const order = this.orderRepository.findById(orderId);
     
@@ -64,13 +39,10 @@ export class OrderService {
       return null;
     }
 
+    this.assertEditable(order);
+
     // Remove the product from the order
     const updatedProducts = order.products.filter(item => item.id !== productId);
-    
-    // If no products left, return null (order would be empty)
-    if (updatedProducts.length === 0) {
-      return null;
-    }
 
     // Create updated order record
     const updatedOrder: OrderRecord = {
@@ -96,6 +68,8 @@ export class OrderService {
       return null;
     }
 
+    this.assertEditable(order);
+
     // Update the product amount
     const updatedProducts = order.products.map(item => 
       item.id === productId 
@@ -116,47 +90,28 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
-    const order = this.orderRepository.findById(orderId);
-    
-    if (!order) {
-      return false;
-    }
-
-    if (order.userId !== userId) {
-      return false;
-    }
-
-    // Check if order is in 'created' status
+  private assertEditable(order: OrderRecord): void {
     if (order.status !== 'created') {
-      return false;
+      throw new DomainError('ORDER_NOT_EDITABLE', 'This order can no longer be changed');
     }
-
-    // Update order status to 'submited'
-    const updatedOrder: OrderRecord = {
-      ...order,
-      status: 'submited'
-    };
-
-    // Update the in-memory repository
-    this.updateOrder(updatedOrder);
-    return true;
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
     // Update the order in the in-memory repository
     // This method should be called whenever order state changes
     this.orderRepository.update(updatedOrder);
-    console.log(`Order ${updatedOrder.orderId} updated in repository`);
   }
 
   private transformToDTO(order: OrderRecord): OrderDTO {
     const products = order.products.map(item => {
-      const product = this.productRepository.findById(item.id);
-      if (!product) {
-        throw new Error(`Product with id ${item.id} not found`);
-      }
-      
+      // A product removed from the catalog must not break the order: its position still counts in totals
+      const product = this.productRepository.findById(item.id) ?? {
+        id: item.id,
+        title: 'Unavailable product',
+        description: '',
+        image: ''
+      };
+
       return {
         product,
         amount: Math.max(1, Math.min(10, item.amount)), // Ensure amount is between 1-10
@@ -180,10 +135,13 @@ export class OrderService {
       }
     });
 
+    const orderProducts = Array.from(uniqueProducts.values());
+
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: orderProducts,
+      totals: calculateOrderTotals(orderProducts, order.promo?.discount)
     };
   }
 }

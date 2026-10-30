@@ -25,10 +25,19 @@ export interface ProductRecord {
   image: string;
 }
 
+export type OrderStatus = 'created' | 'checkout' | 'paid' | 'processing' | 'deliver' | 'cancelled';
+
+export interface OrderTotals {
+  subtotal: number;
+  discount: number;
+  total: number;
+  currency: 'USD';
+}
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   createAt: number;
   products: Array<{
     id: string;
@@ -40,13 +49,14 @@ export interface OrderRecord {
 
 export interface OrderDTO {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
+  status: OrderStatus;
   products: Array<{
     product: ProductRecord;
     amount: number;
     price: number;
   }>;
   promo?: PromoEntity;
+  totals: OrderTotals;
 }
 
 export interface PromoEntity {

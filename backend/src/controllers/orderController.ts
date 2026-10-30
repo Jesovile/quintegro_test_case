@@ -1,17 +1,7 @@
 import { Request, Response } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
-
-interface ProductItem {
-  id: string;
-  amount: number;
-  price: number;
-}
-
-interface OrderSumRequest {
-  products: ProductItem[];
-  promo?: string;
-}
+import { DomainError } from '../errors/domainError';
 
 export class OrderController {
   constructor(
@@ -73,39 +63,6 @@ export class OrderController {
     }
   }
 
-  async calculateOrderSum(req: Request, res: Response) {
-    try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
-
-      const { orderId } = req.params;
-      const { products, promo } = req.body as OrderSumRequest;
-
-      if (!products || !Array.isArray(products)) {
-        return res.status(400).json({ error: 'Products array is required' });
-      }
-
-      // Validate products structure
-      for (const product of products) {
-        if (!product.id || typeof product.amount !== 'number' || typeof product.price !== 'number') {
-          return res.status(400).json({ error: 'Invalid product structure. Each product must have id, amount, and price' });
-        }
-        if (product.amount < 0 || product.price < 0) {
-          return res.status(400).json({ error: 'Amount and price must be non-negative' });
-        }
-      }
-
-      const sum = this.orderService.calculateOrderSum(products, promo);
-      return res.status(200).json(sum);
-    } catch (error) {
-      console.error('Calculate order sum error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
   async deleteProductFromOrder(req: Request, res: Response) {
     try {
       const userId = this.extractUserIdFromToken(req);
@@ -128,34 +85,10 @@ export class OrderController {
 
       return res.status(200).json(updatedOrder);
     } catch (error) {
+      if (error instanceof DomainError && error.code === 'ORDER_NOT_EDITABLE') {
+        return res.status(409).json({ error: error.message });
+      }
       console.error('Delete product from order error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  async submitOrder(req: Request, res: Response) {
-    try {
-      const userId = this.extractUserIdFromToken(req);
-      
-      if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
-      }
-
-      const { orderId } = req.params;
-
-      if (!orderId) {
-        return res.status(400).json({ error: 'Order ID is required' });
-      }
-
-      const success = await this.orderService.submitOrder(orderId, userId);
-
-      if (!success) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
-
-      return res.status(200).send();
-    } catch (error) {
-      console.error('Submit order error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

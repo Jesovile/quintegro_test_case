@@ -128,9 +128,9 @@ const options: swaggerJsdoc.Options = {
             },
             status: {
               type: 'string',
-              enum: ['created', 'submited', 'finished'],
+              enum: ['created', 'checkout', 'paid', 'processing', 'deliver', 'cancelled'],
               description: 'Order status',
-              example: 'finished'
+              example: 'deliver'
             },
             createAt: {
               type: 'number',
@@ -155,10 +155,10 @@ const options: swaggerJsdoc.Options = {
                     example: 1
                   },
                   price: {
-                    type: 'number',
+                    type: 'integer',
                     minimum: 0,
-                    description: 'Product price',
-                    example: 1299.99
+                    description: 'Product price in whole US dollars',
+                    example: 1300
                   }
                 },
                 required: ['id', 'amount', 'price']
@@ -180,9 +180,9 @@ const options: swaggerJsdoc.Options = {
             },
             status: {
               type: 'string',
-              enum: ['created', 'submited', 'finished'],
+              enum: ['created', 'checkout', 'paid', 'processing', 'deliver', 'cancelled'],
               description: 'Order status',
-              example: 'finished'
+              example: 'deliver'
             },
             products: {
               type: 'array',
@@ -200,10 +200,10 @@ const options: swaggerJsdoc.Options = {
                     example: 1
                   },
                   price: {
-                    type: 'number',
+                    type: 'integer',
                     minimum: 0,
-                    description: 'Product price',
-                    example: 1299.99
+                    description: 'Product price in whole US dollars',
+                    example: 1300
                   }
                 },
                 required: ['product', 'amount', 'price']

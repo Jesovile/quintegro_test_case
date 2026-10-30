@@ -11,7 +11,7 @@ export const typeDefs = gql`
   type OrderItem {
     product: Product!
     amount: Int!
-    price: Float!
+    price: Int!
   }
 
   type Promo {
@@ -25,18 +25,27 @@ export const typeDefs = gql`
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    totals: OrderTotals!
+  }
+
+  type OrderTotals {
+    subtotal: Int!
+    discount: Int!
+    total: Int!
+    currency: Currency!
+  }
+
+  enum Currency {
+    USD
   }
 
   enum OrderStatus {
     created
-    submited
-    finished
-  }
-
-  input ProductInput {
-    id: ID!
-    amount: Int!
-    price: Float!
+    checkout
+    paid
+    processing
+    deliver
+    cancelled
   }
 
   input LoginInput {
@@ -51,13 +60,12 @@ export const typeDefs = gql`
   type Query {
     orders: [Order!]!
     order(orderId: ID!): Order
-    orderSum(orderId: ID!, products: [ProductInput!]!, promo: String): Float!
     promo(promoId: ID!): Promo
   }
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
-    deleteProductFromOrder(orderId: ID!, productId: ID!): Order
+    deleteProductFromOrder(orderId: ID!, productId: ID!): Order!
+    updateProductAmount(orderId: ID!, productId: ID!, amount: Int!): Order!
   }
 `;

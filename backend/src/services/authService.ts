@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { AuthRecord, UserRecord } from '../types/entities';
 import { IAuthRepository, IUserRepository } from '../repositories/interfaces';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -32,9 +31,9 @@ export class AuthService {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   }
 
-  verifyToken(token: string): any {
+  verifyToken(token: string): { userId?: string } | null {
     try {
-      return jwt.verify(token, JWT_SECRET);
+      return jwt.verify(token, JWT_SECRET) as { userId?: string };
     } catch (error) {
       return null;
     }

@@ -13,14 +13,11 @@ import { createResetRoutes } from './routes/resetRoutes';
 import { AuthController } from './controllers/authController';
 import { OrderController } from './controllers/orderController';
 import { PromoController } from './controllers/promoController';
-import { AuthService } from './services/authService';
-import { OrderService } from './services/orderService';
-import { PromoService } from './services/promoService';
-import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { createContainer } from './container';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  private container = createContainer();
 
   constructor() {
     this.app = express();
@@ -47,18 +44,7 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
+    const { authService, orderService, promoService, orderRepository } = this.container;
 
     // Initialize controllers
     const authController = new AuthController(authService);
@@ -69,7 +55,7 @@ export class App {
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(orderRepository));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -97,18 +83,7 @@ export class App {
   }
 
   private async initializeGraphQL(): Promise<void> {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
+    const { authService, orderService, promoService } = this.container;
 
     // Create Apollo Server
     const apolloServer = createApolloServer(orderService, authService, promoService);
@@ -116,7 +91,7 @@ export class App {
 
     // Apply Apollo Server middleware
     apolloServer.applyMiddleware({ 
-      app: this.app, 
+      app: this.app as never, // apollo-server-express pins its own @types/express
       path: '/graphql',
       cors: false // We're already using CORS middleware
     });

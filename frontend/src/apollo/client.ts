@@ -29,7 +29,11 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 
 export const client = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Order: { keyFields: ['orderId'] },
+    },
+  }),
   defaultOptions: {
     watchQuery: {
       errorPolicy: 'all',

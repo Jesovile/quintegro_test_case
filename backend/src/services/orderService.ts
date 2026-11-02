@@ -2,6 +2,7 @@ import { OrderRecord, OrderDTO, ProductRecord } from '../types/entities';
 import { IOrderRepository, IProductRepository } from '../repositories/interfaces';
 import { DomainError } from '../errors/domainError';
 import { calculateOrderTotals } from './pricing';
+import { isPromoActive } from './promoService';
 
 export class OrderService {
   constructor(
@@ -136,12 +137,16 @@ export class OrderService {
     });
 
     const orderProducts = Array.from(uniqueProducts.values());
+    const promoActive = order.promo ? isPromoActive(order.promo) : false;
 
     return {
       orderId: order.orderId,
       status: order.status,
       products: orderProducts,
-      totals: calculateOrderTotals(orderProducts, order.promo?.discount),
+      promo: order.promo,
+      // An expired promo stays on the order so the user sees it, but no longer discounts the total
+      promoActive,
+      totals: calculateOrderTotals(orderProducts, promoActive && order.promo ? order.promo.discount : 0),
       deliverySaved: Boolean(order.contact && order.addressRef)
     };
   }

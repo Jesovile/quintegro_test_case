@@ -12,6 +12,7 @@ import CheckoutStepper from './CheckoutStepper'
 import OrderSummary from './OrderSummary'
 import CheckoutStepPlaceholder from './CheckoutStepPlaceholder'
 import DeliveryStep from './DeliveryStep'
+import PaymentStep from './PaymentStep'
 
 const backToOrders = (
   <Button asChild variant="outline" className="mt-4">
@@ -23,7 +24,7 @@ const backToOrders = (
 const renderPlaceholderStep = (step: Exclude<CheckoutStep, 'delivery'>, order: Order) => {
   switch (step) {
     case 'payment':
-      return <CheckoutStepPlaceholder title="Payment" description="Payment details will be entered here." />
+      return <PaymentStep order={order} />
     case 'processing':
       return <CheckoutStepPlaceholder title="Processing" description={`Order #${order.orderId} is being processed.`} />
     case 'success':

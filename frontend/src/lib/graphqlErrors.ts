@@ -9,6 +9,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   ADDRESS_REJECTED: 'We could not verify this address.',
   GEO_UNAVAILABLE: 'We could not check the address right now. Please try again.',
   ADDRESS_NOT_FOUND: 'Your saved address is no longer available. Please enter it again.',
+  PROMO_NOT_FOUND: 'This promo code does not exist.',
+  PROMO_EXPIRED: 'This promo code has expired.',
   UNAUTHENTICATED: 'Please sign in to continue.'
 }
 

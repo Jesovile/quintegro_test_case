@@ -31,7 +31,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
         </div>
         {totals.discount > 0 && (
           <div className="flex justify-between">
-            <dt className="text-gray-600">Discount</dt>
+            <dt className="text-gray-600">Discount{order.promo ? ` (${order.promo.id})` : ''}</dt>
             <dd className="text-green-700">−{formatUsd(totals.discount)}</dd>
           </div>
         )}

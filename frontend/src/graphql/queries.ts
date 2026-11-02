@@ -27,6 +27,7 @@ export const ORDER_FIELDS = gql`
       currency
     }
     deliverySaved
+    promoActive
   }
 `;
 

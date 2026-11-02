@@ -17,13 +17,14 @@ export const createContainer = () => {
   const geoService = new MockGeoService();
 
   const orderService = new OrderService(orderRepository, productRepository);
+  const promoService = new PromoService(promoRepository);
 
   return {
     orderRepository,
     authService: new AuthService(authRepository, userRepository),
     orderService,
-    checkoutService: new CheckoutService(orderRepository, orderService, geoService),
-    promoService: new PromoService(promoRepository)
+    checkoutService: new CheckoutService(orderRepository, orderService, geoService, promoService),
+    promoService
   };
 };
 

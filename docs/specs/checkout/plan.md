@@ -45,12 +45,12 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: нельзя пройти дальше с неверными данными, ZIP `00000` отклоняется, `99999` даёт "Повторить", после перезагрузки данные на месте.
 
 ## Slice 5 — Промокод в чекауте
-- [ ] Data / status model changes: нет, используется `OrderRecord.promo`
-- [ ] Service + validation (domain layer): `applyPromo`, `removePromo`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`; `pricing.ts` учитывает скидку; `transformToDTO` отдаёт `promo`
-- [ ] API (resolver/route): `applyPromo`, `removePromo`
-- [ ] UI: поле промокода на шаге Оплата, скидка в `OrderSummary`
-- [ ] Tests (test-writer): AC-3.8, AC-3.9; округление скидки
-- [ ] Review + fixes
+- [x] Data / status model changes: нет, используется `OrderRecord.promo`
+- [x] Service + validation (domain layer): `applyPromo`, `removePromo`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`; `pricing.ts` учитывает скидку; `transformToDTO` отдаёт `promo`
+- [x] API (resolver/route): `applyPromo`, `removePromo`
+- [x] UI: поле промокода на шаге Оплата, скидка в `OrderSummary`
+- [x] Tests (test-writer): AC-3.8, AC-3.9; округление скидки
+- [x] Review + fixes
 - Checkpoint to demo: `SAVE10` уменьшает итог, снимается обратно, `SAVE5` даёт понятную ошибку.
 
 ## Slice 6 — Оплата и банковский мок
@@ -132,3 +132,7 @@ manual check -> demo to the stakeholder.
   - Правила полей доставки и список штатов продублированы во frontend и backend; типы `DeliveryInput` и `Delivery` объявлены в сервисах, а не в `types/entities.ts`.
   - Сервер принимает телефон с посторонними символами вокруг цифр; хранятся только цифры.
   - Сценарии "Гео-сервис недоступен при загрузке шага" и "адрес пропал" проверены тестами backend, в браузере не воспроизводились: мок не умеет отказывать на чтении.
+- Находки ревью Slice 5, по решению отложены:
+  - Заменить применённый промокод можно только через "Remove", хотя сервер поддерживает замену напрямую.
+  - Нет подсказки о регистре: `save10` даёт "does not exist".
+- Для Slice 6 (из ревью Slice 4 и 5): сумму к списанию брать только из серверного расчёта, промокод и наличие адреса в Гео-сервисе проверять заново в момент оплаты.

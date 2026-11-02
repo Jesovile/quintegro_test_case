@@ -8,7 +8,8 @@ const orderIn = (status: OrderStatus, deliverySaved = false): Order => ({
   products: [],
   promo: null,
   totals: { subtotal: 0, discount: 0, total: 0, currency: 'USD' },
-  deliverySaved
+  deliverySaved,
+  promoActive: false
 })
 
 describe('checkout steps', () => {

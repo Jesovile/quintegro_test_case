@@ -1,8 +1,9 @@
 import { Contact, OrderDTO, OrderRecord, OrderStatus } from '../types/entities';
-import { IOrderRepository } from '../repositories/interfaces';
+import { IOrderRepository, OrderTransitionPatch } from '../repositories/interfaces';
 import { IGeoService, IntegrationUnavailableError, UsAddress, withTimeout } from '../integrations/interfaces';
 import { DomainError } from '../errors/domainError';
 import { OrderService } from './orderService';
+import { PromoService } from './promoService';
 import { canTransition } from './orderStateMachine';
 import { DeliveryInput, normalizeDelivery, validateDelivery } from './checkoutValidation';
 
@@ -32,8 +33,32 @@ export class CheckoutService {
     private orderRepository: IOrderRepository,
     private orderService: OrderService,
     private geoService: IGeoService,
+    private promoService: PromoService,
     private geoTimeoutMs = GEO_TIMEOUT_MS
   ) {}
+
+  async applyPromo(orderId: string, userId: string, code: string): Promise<OrderDTO> {
+    const order = this.findOwnOrder(orderId, userId);
+    this.assertInCheckout(order);
+
+    const promo = this.promoService.getActivePromo(code);
+    if (order.promo?.id === promo.id && order.promo.dueDate === promo.dueDate) {
+      return this.orderService.toDTO(order);
+    }
+
+    // A copy: later changes to the promo catalog must not alter an order that already has it
+    return this.updateInCheckout(orderId, { promo: { ...promo } });
+  }
+
+  async removePromo(orderId: string, userId: string): Promise<OrderDTO> {
+    const order = this.findOwnOrder(orderId, userId);
+    this.assertInCheckout(order);
+
+    if (!order.promo) {
+      return this.orderService.toDTO(order);
+    }
+    return this.updateInCheckout(orderId, { promo: undefined });
+  }
 
   async startCheckout(orderId: string, userId: string): Promise<OrderDTO> {
     const order = this.findOwnOrder(orderId, userId);
@@ -139,6 +164,14 @@ export class CheckoutService {
       throw new DomainError('ORDER_NOT_FOUND', 'Order not found or access denied');
     }
     return order;
+  }
+
+  private updateInCheckout(orderId: string, patch: OrderTransitionPatch): OrderDTO {
+    const updated = this.orderRepository.transition(orderId, ['checkout'], patch);
+    if (!updated) {
+      throw new DomainError('ORDER_NOT_EDITABLE', 'This order can no longer be changed');
+    }
+    return this.orderService.toDTO(updated);
   }
 
   private assertInCheckout(order: OrderRecord): void {

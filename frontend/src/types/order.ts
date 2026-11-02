@@ -33,6 +33,7 @@ export interface Order {
   promo: Promo | null
   totals: OrderTotals
   deliverySaved: boolean
+  promoActive: boolean
 }
 
 export interface UsAddress {

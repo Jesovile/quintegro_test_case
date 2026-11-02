@@ -1,7 +1,7 @@
 import { UserRecord, AuthRecord, OrderRecord, OrderStatus, ProductRecord, PromoEntity } from '../types/entities';
 
 // Fields a guarded update may change; owner, id and composition are never part of it
-export type OrderTransitionPatch = Partial<Pick<OrderRecord, 'status' | 'contact' | 'addressRef'>>;
+export type OrderTransitionPatch = Partial<Pick<OrderRecord, 'status' | 'contact' | 'addressRef' | 'promo'>>;
 
 export interface IUserRepository {
   findById(id: string): UserRecord | undefined;

@@ -25,6 +25,8 @@ export const typeDefs = gql`
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    # false when there is no promo or it has expired; an expired promo gives no discount
+    promoActive: Boolean!
     totals: OrderTotals!
     deliverySaved: Boolean!
     # Requested only by the checkout: the address is read from the Geo service
@@ -109,5 +111,7 @@ export const typeDefs = gql`
     startCheckout(orderId: ID!): Order!
     exitCheckout(orderId: ID!): Order!
     saveDelivery(orderId: ID!, input: DeliveryInput!): Order!
+    applyPromo(orderId: ID!, code: String!): Order!
+    removePromo(orderId: ID!): Order!
   }
 `;

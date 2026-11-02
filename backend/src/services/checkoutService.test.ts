@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { InMemoryOrderRepository, InMemoryProductRepository } from '../repositories/implementations';
+import { InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from '../repositories/implementations';
+import { PromoService } from './promoService';
 import { AddressValidationResult, IGeoService, UsAddress } from '../integrations/interfaces';
 import { MockGeoService } from '../integrations/mock/mockGeoService';
 import { OrderService } from './orderService';
@@ -14,7 +15,8 @@ const input = {
 
 const setup = (geo: IGeoService, timeoutMs = 50) => {
   const orders = new InMemoryOrderRepository();
-  const service = new CheckoutService(orders, new OrderService(orders, new InMemoryProductRepository()), geo, timeoutMs);
+  const promos = new PromoService(new InMemoryPromoRepository());
+  const service = new CheckoutService(orders, new OrderService(orders, new InMemoryProductRepository()), geo, promos, timeoutMs);
   return { orders, service };
 };
 

@@ -59,6 +59,26 @@ export const SAVE_DELIVERY: TypedDocumentNode<
   }
 `;
 
+// Mutation to apply a promo code to an order in checkout
+export const APPLY_PROMO: TypedDocumentNode<{ applyPromo: Order }, { orderId: string; code: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation ApplyPromo($orderId: ID!, $code: String!) {
+    applyPromo(orderId: $orderId, code: $code) {
+      ...OrderFields
+    }
+  }
+`;
+
+// Mutation to remove the promo code from an order in checkout
+export const REMOVE_PROMO: TypedDocumentNode<{ removePromo: Order }, { orderId: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation RemovePromo($orderId: ID!) {
+    removePromo(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER: TypedDocumentNode<
   { deleteProductFromOrder: Order },

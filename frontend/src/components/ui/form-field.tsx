@@ -6,11 +6,13 @@ interface FormFieldProps {
   required?: boolean
   error?: string
   className?: string
+  // For a single field whose error appears without moving focus; forms that focus the first error leave it off
+  announceError?: boolean
   children: React.ReactNode
 }
 
 // Label bound to the control, required/optional mark and the error linked through aria-describedby
-export const FormField: React.FC<FormFieldProps> = ({ id, label, required = false, error, className, children }) => (
+export const FormField: React.FC<FormFieldProps> = ({ id, label, required = false, error, className, announceError = false, children }) => (
   <div className={className}>
     <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">
       {label}
@@ -22,7 +24,7 @@ export const FormField: React.FC<FormFieldProps> = ({ id, label, required = fals
     </label>
     {children}
     {error && (
-      <p id={`${id}-error`} className="mt-1 text-sm text-red-600">
+      <p id={`${id}-error`} role={announceError ? 'alert' : undefined} className="mt-1 text-sm text-red-600">
         {error}
       </p>
     )}

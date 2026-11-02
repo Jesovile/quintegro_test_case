@@ -37,16 +37,7 @@ export const createResolvers = ({ orderService, checkoutService, authService, pr
       },
 
       promo: async (_parent: unknown, { promoId }: { promoId: string }) => {
-        const validation = promoService.validatePromo(promoId);
-
-        if (!validation.isValid) {
-          if (validation.error === 'Promo expired') {
-            throw new DomainError('PROMO_EXPIRED', 'Promo expired');
-          }
-          throw new DomainError('PROMO_NOT_FOUND', 'Promo not found');
-        }
-
-        return validation.promo;
+        return promoService.getActivePromo(promoId);
       },
 
       me: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
@@ -100,6 +91,14 @@ export const createResolvers = ({ orderService, checkoutService, authService, pr
 
       saveDelivery: async (_parent: unknown, { orderId, input }: { orderId: string, input: DeliveryInput }, context: GraphQLContext) => {
         return checkoutService.saveDelivery(orderId, requireUser(context), input);
+      },
+
+      applyPromo: async (_parent: unknown, { orderId, code }: { orderId: string, code: string }, context: GraphQLContext) => {
+        return checkoutService.applyPromo(orderId, requireUser(context), code);
+      },
+
+      removePromo: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return checkoutService.removePromo(orderId, requireUser(context));
       }
     }
   };

@@ -65,6 +65,7 @@ export interface OrderDTO {
     price: number;
   }>;
   promo?: PromoEntity;
+  promoActive: boolean;
   totals: OrderTotals;
   deliverySaved: boolean;
 }

@@ -44,7 +44,7 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    const { authService, orderService, promoService, orderRepository } = this.container;
+    const { authService, orderService, promoService, resetTestState } = this.container;
 
     // Initialize controllers
     const authController = new AuthController(authService);
@@ -55,7 +55,7 @@ export class App {
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(orderRepository));
+    this.app.use('/reset/orders', createResetRoutes(resetTestState));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {

@@ -36,6 +36,11 @@ export class ProcessingService {
     this.timer = undefined;
   }
 
+  // Test helper for a reset backend: forgets which orders were reported
+  resetState(): void {
+    this.reported.clear();
+  }
+
   // One pass over the orders; a pass never overlaps the previous one and one broken order never stops the others
   async tick(): Promise<void> {
     if (this.ticking) {

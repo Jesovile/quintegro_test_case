@@ -75,3 +75,21 @@ describe('MockFulfillmentService', () => {
     expect(await service.getStatus('job_nope')).toEqual({ status: 'failed' });
   });
 });
+
+describe('MockFulfillmentService.reset', () => {
+  it('forgets jobs, keys and the failing first job, like a fresh service', async () => {
+    const geo = new MockGeoService(0);
+    const result = await geo.validateAddress({ line1: '1 FAIL St', city: 'Springfield', state: 'IL', zip: '62701' });
+    const addressRef = result.ok ? result.addressRef : '';
+    const service = new MockFulfillmentService(geo, 0, 0);
+
+    const before = await service.start({ orderId: 'order-2', addressRef, idempotencyKey: 'k1' });
+    service.reset();
+    const after = await service.start({ orderId: 'order-2', addressRef, idempotencyKey: 'k1' });
+
+    expect(after.jobId).not.toBe(before.jobId);
+    expect(await service.getStatus(before.jobId)).toEqual({ status: 'failed' });
+    // The first job of the order fails again, as on a fresh backend
+    expect(await service.getStatus(after.jobId)).toEqual({ status: 'failed' });
+  });
+});

@@ -26,6 +26,7 @@ export const createContainer = () => {
   const orderService = new OrderService(orderRepository, productRepository);
   const promoService = new PromoService(promoRepository);
   const paymentService = new PaymentService(orderRepository, orderService, geoService, bankGateway);
+  const processingService = new ProcessingService(orderRepository, orderService, fulfillmentService);
 
   return {
     orderRepository,
@@ -33,7 +34,13 @@ export const createContainer = () => {
     orderService,
     checkoutService: new CheckoutService(orderRepository, orderService, geoService, promoService, paymentService),
     paymentService,
-    processingService: new ProcessingService(orderRepository, orderService, fulfillmentService),
+    processingService,
+    // Test helper behind GET /reset/orders: seed orders back and mock services without remembered jobs
+    resetTestState: () => {
+      orderRepository.reset();
+      fulfillmentService.reset();
+      processingService.resetState();
+    },
     cancellationService: new CancellationService(orderRepository, orderService, paymentService, bankGateway, fulfillmentService),
     promoService
   };

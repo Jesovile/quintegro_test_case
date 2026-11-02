@@ -50,11 +50,12 @@ const LoginPage: React.FC = () => {
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Login</label>
+              <label htmlFor="login-name" className="text-sm font-medium text-gray-700">Login</label>
               <Input
+                id="login-name"
                 type="text"
                 placeholder="Enter your login"
-                tabIndex={2}
+                autoComplete="username"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
@@ -64,11 +65,12 @@ const LoginPage: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="login-password" className="text-sm font-medium text-gray-700">Password</label>
               <Input
+                id="login-password"
                 type="password"
                 placeholder="Enter your password"
-                tabIndex={3}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -88,7 +90,6 @@ const LoginPage: React.FC = () => {
             <Button
               type="button"
               onClick={handleSubmit}
-              tabIndex={1}
               className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
               Login

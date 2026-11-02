@@ -54,6 +54,13 @@ export class MockFulfillmentService implements IFulfillmentService {
     return { status: job.fails ? 'failed' : 'done' };
   }
 
+  // Test helper: forgets all jobs so a reset backend behaves like a fresh one
+  reset(): void {
+    this.jobs.clear();
+    this.jobsByKey.clear();
+    this.jobCountByOrder.clear();
+  }
+
   async cancel(jobId: string): Promise<{ status: 'cancelled' | 'too_late' }> {
     await wait(this.delayMs);
 

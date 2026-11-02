@@ -1,6 +1,6 @@
 import { App } from './app';
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const startServer = async () => {
   const app = new App();

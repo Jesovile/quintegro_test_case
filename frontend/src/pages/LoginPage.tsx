@@ -1,21 +1,26 @@
 import React, { useState } from 'react'
-import { useHistory } from 'react-router-dom'
-import { useMutation } from '@apollo/client'
+import { useHistory, useLocation } from 'react-router-dom'
+import { useApolloClient, useMutation } from '@apollo/client'
 import { LOGIN } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { safeRedirectPath, setToken } from '@/lib/auth'
 
 const LoginPage: React.FC = () => {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const history = useHistory()
+  const location = useLocation()
+  const client = useApolloClient()
 
   const [loginMutation, { loading: isLoading }] = useMutation(LOGIN, {
-    onCompleted: (data) => {
-      localStorage.setItem('auth_token', data.login.token)
-      history.push('/')
+    onCompleted: async (data) => {
+      setToken(data.login.token)
+      // Drop responses cached for a previous or rejected session
+      await client.clearStore()
+      history.push(safeRedirectPath(new URLSearchParams(location.search).get('redirect')))
     },
     onError: (error) => {
       setError(error.message || 'An error occurred. Please try again.')
@@ -45,11 +50,12 @@ const LoginPage: React.FC = () => {
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Login</label>
+              <label htmlFor="login-name" className="text-sm font-medium text-gray-700">Login</label>
               <Input
+                id="login-name"
                 type="text"
                 placeholder="Enter your login"
-                tabIndex={2}
+                autoComplete="username"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
@@ -59,11 +65,12 @@ const LoginPage: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="login-password" className="text-sm font-medium text-gray-700">Password</label>
               <Input
+                id="login-password"
                 type="password"
                 placeholder="Enter your password"
-                tabIndex={3}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -83,7 +90,6 @@ const LoginPage: React.FC = () => {
             <Button
               type="button"
               onClick={handleSubmit}
-              tabIndex={1}
               className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
               Login

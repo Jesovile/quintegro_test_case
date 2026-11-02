@@ -1,19 +1,23 @@
-import { OrderService } from '../services/orderService';
-import { AuthService } from '../services/authService';
-import { PromoService } from '../services/promoService';
+import { Request } from 'express';
+import { DomainError } from '../errors/domainError';
+import type { GraphQLServices } from './server';
+import { OrderDTO } from '../types/entities';
+import { DeliveryInput } from '../services/checkoutValidation';
+import { PayOrderInput } from '../services/paymentService';
 
-export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
-  const extractUserIdFromToken = (context: any): string | null => {
+export interface GraphQLContext {
+  req: Request;
+}
+
+const ORDER_NOT_FOUND_MESSAGE = 'Order not found or access denied';
+
+export const createResolvers = ({ orderService, checkoutService, paymentService, processingService, cancellationService, authService, promoService }: GraphQLServices) => {
+  const requireUser = (context: GraphQLContext): string => {
     const authHeader = context.req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
+    const decoded = authHeader?.startsWith('Bearer ') ? authService.verifyToken(authHeader.substring(7)) : null;
 
-    const token = authHeader.substring(7);
-    const decoded = authService.verifyToken(token);
-    
     if (!decoded || !decoded.userId) {
-      return null;
+      throw new DomainError('UNAUTHENTICATED', 'Authentication required');
     }
 
     return decoded.userId;
@@ -21,115 +25,93 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
 
   return {
     Query: {
-      orders: async (parent: any, args: any, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          return await orderService.getOrdersByUserId(userId);
-        } catch (error) {
-          throw new Error('Failed to fetch orders');
-        }
+      orders: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+        return orderService.getOrdersByUserId(requireUser(context));
       },
 
-      order: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      order: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        const order = await orderService.getOrderById(orderId, requireUser(context));
+        if (!order) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
-
-        try {
-          const order = await orderService.getOrderById(orderId, userId);
-          if (!order) {
-            throw new Error('Order not found or access denied');
-          }
-          return order;
-        } catch (error) {
-          throw new Error('Failed to fetch order');
-        }
+        return order;
       },
 
-      orderSum: async (parent: any, { orderId, products, promo }: { orderId: string, products: any[], promo?: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
-        try {
-          return orderService.calculateOrderSum(products, promo);
-        } catch (error) {
-          throw new Error('Failed to calculate order sum');
-        }
+      promo: async (_parent: unknown, { promoId }: { promoId: string }) => {
+        return promoService.getActivePromo(promoId);
       },
 
-      promo: async (parent: any, { promoId }: { promoId: string }, context: any) => {
-        try {
-          const validation = promoService.validatePromo(promoId);
-          
-          if (!validation.isValid) {
-            if (validation.error === 'Promo not found') {
-              throw new Error('Promo not found');
-            } else if (validation.error === 'Promo expired') {
-              throw new Error('Promo expired');
-            }
-          }
-
-          return validation.promo;
-        } catch (error) {
-          throw new Error('Failed to fetch promo');
+      me: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+        const user = authService.getUser(requireUser(context));
+        if (!user) {
+          throw new DomainError('UNAUTHENTICATED', 'Authentication required');
         }
+        return user;
       }
     },
 
+    Order: {
+      // The parent order has already been checked to belong to the requesting user
+      delivery: async (order: OrderDTO) => checkoutService.getDelivery(order.orderId)
+    },
+
     Mutation: {
-      login: async (parent: any, { input }: { input: { login: string, password: string } }, context: any) => {
-        try {
-          const token = await authService.authenticateUser(input.login, input.password);
-          
-          if (!token) {
-            throw new Error('Invalid credentials');
-          }
+      login: async (_parent: unknown, { input }: { input: { login: string, password: string } }) => {
+        const token = await authService.authenticateUser(input.login, input.password);
 
-          return { token };
-        } catch (error) {
-          throw new Error('Login failed');
+        if (!token) {
+          throw new DomainError('UNAUTHENTICATED', 'Invalid credentials');
         }
+
+        return { token };
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      deleteProductFromOrder: async (_parent: unknown, { orderId, productId }: { orderId: string, productId: string }, context: GraphQLContext) => {
+        const updatedOrder = await orderService.deleteProductFromOrder(orderId, productId, requireUser(context));
+        if (!updatedOrder) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
-
-        try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
-          }
-          return success;
-        } catch (error) {
-          throw new Error('Failed to submit order');
-        }
+        return updatedOrder;
       },
 
-      deleteProductFromOrder: async (parent: any, { orderId, productId }: { orderId: string, productId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
+      updateProductAmount: async (_parent: unknown, { orderId, productId, amount }: { orderId: string, productId: string, amount: number }, context: GraphQLContext) => {
+        const updatedOrder = await orderService.updateProductAmount(orderId, productId, amount, requireUser(context));
+        if (!updatedOrder) {
+          throw new DomainError('ORDER_NOT_FOUND', ORDER_NOT_FOUND_MESSAGE);
         }
+        return updatedOrder;
+      },
 
-        try {
-          const updatedOrder = await orderService.deleteProductFromOrder(orderId, productId, userId);
-          if (!updatedOrder) {
-            throw new Error('Order not found or access denied');
-          }
-          return updatedOrder;
-        } catch (error) {
-          throw new Error('Failed to delete product from order');
-        }
+      startCheckout: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return checkoutService.startCheckout(orderId, requireUser(context));
+      },
+
+      exitCheckout: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return checkoutService.exitCheckout(orderId, requireUser(context));
+      },
+
+      saveDelivery: async (_parent: unknown, { orderId, input }: { orderId: string, input: DeliveryInput }, context: GraphQLContext) => {
+        return checkoutService.saveDelivery(orderId, requireUser(context), input);
+      },
+
+      applyPromo: async (_parent: unknown, { orderId, code }: { orderId: string, code: string }, context: GraphQLContext) => {
+        return checkoutService.applyPromo(orderId, requireUser(context), code);
+      },
+
+      removePromo: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return checkoutService.removePromo(orderId, requireUser(context));
+      },
+
+      payOrder: async (_parent: unknown, { orderId, input }: { orderId: string, input: PayOrderInput }, context: GraphQLContext) => {
+        return paymentService.payOrder(orderId, requireUser(context), input);
+      },
+
+      retryProcessing: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return processingService.retryProcessing(orderId, requireUser(context));
+      },
+
+      cancelOrder: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return cancellationService.cancelOrder(orderId, requireUser(context));
       }
     }
   };

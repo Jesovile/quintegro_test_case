@@ -11,7 +11,7 @@ export const typeDefs = gql`
   type OrderItem {
     product: Product!
     amount: Int!
-    price: Float!
+    price: Int!
   }
 
   type Promo {
@@ -25,18 +25,76 @@ export const typeDefs = gql`
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    # false when there is no promo or it has expired; an expired promo gives no discount
+    promoActive: Boolean!
+    totals: OrderTotals!
+    deliverySaved: Boolean!
+    # true when processing failed and can be retried
+    processingFailed: Boolean!
+    # Requested only by the checkout: the address is read from the Geo service
+    delivery: Delivery
+  }
+
+  type UsAddress {
+    line1: String!
+    line2: String
+    city: String!
+    state: String!
+    zip: String!
+  }
+
+  type Delivery {
+    fullName: String!
+    email: String!
+    phone: String!
+    address: UsAddress!
+  }
+
+  input UsAddressInput {
+    line1: String!
+    line2: String
+    city: String!
+    state: String!
+    zip: String!
+  }
+
+  input DeliveryInput {
+    fullName: String!
+    email: String!
+    phone: String!
+    address: UsAddressInput!
+  }
+
+  # cardToken comes from the bank's tokenizer in the browser; card data never reaches this API.
+  # expectedTotal is the total shown to the user: the charge happens only if it still matches.
+  input PayOrderInput {
+    cardToken: String!
+    expectedTotal: Int!
+  }
+
+  type User {
+    id: ID!
+    name: String!
+  }
+
+  type OrderTotals {
+    subtotal: Int!
+    discount: Int!
+    total: Int!
+    currency: Currency!
+  }
+
+  enum Currency {
+    USD
   }
 
   enum OrderStatus {
     created
-    submited
-    finished
-  }
-
-  input ProductInput {
-    id: ID!
-    amount: Int!
-    price: Float!
+    checkout
+    paid
+    processing
+    deliver
+    cancelled
   }
 
   input LoginInput {
@@ -51,13 +109,21 @@ export const typeDefs = gql`
   type Query {
     orders: [Order!]!
     order(orderId: ID!): Order
-    orderSum(orderId: ID!, products: [ProductInput!]!, promo: String): Float!
     promo(promoId: ID!): Promo
+    me: User!
   }
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
-    deleteProductFromOrder(orderId: ID!, productId: ID!): Order
+    deleteProductFromOrder(orderId: ID!, productId: ID!): Order!
+    updateProductAmount(orderId: ID!, productId: ID!, amount: Int!): Order!
+    startCheckout(orderId: ID!): Order!
+    exitCheckout(orderId: ID!): Order!
+    saveDelivery(orderId: ID!, input: DeliveryInput!): Order!
+    applyPromo(orderId: ID!, code: String!): Order!
+    removePromo(orderId: ID!): Order!
+    payOrder(orderId: ID!, input: PayOrderInput!): Order!
+    retryProcessing(orderId: ID!): Order!
+    cancelOrder(orderId: ID!): Order!
   }
 `;

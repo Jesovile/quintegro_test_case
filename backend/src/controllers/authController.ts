@@ -5,7 +5,7 @@ import { LoginRequest, LoginResponse } from '../types/entities';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  async login(req: Request<{}, {}, LoginRequest>, res: Response<LoginResponse | { error: string }>) {
+  async login(req: Request<Record<string, never>, unknown, LoginRequest>, res: Response<LoginResponse | { error: string }>) {
     try {
       const { login, password } = req.body;
 

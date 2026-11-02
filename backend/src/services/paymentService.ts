@@ -167,7 +167,7 @@ export class PaymentService implements PaymentSettlement {
     // The attempt was dropped (order changed, cancelled or reopened) while the bank was charging: give the money back
     const refunded = await this.refundCharge(orderId, paymentId, attempt.amountUsd);
     if (!refunded) {
-      throw new DomainError('REFUND_FAILED', 'The order changed during payment and the refund could not be completed yet. We will retry it.');
+      throw new DomainError('REFUND_PENDING', 'The order changed during payment and the refund could not be completed yet. We will retry it.');
     }
     throw new DomainError('PAYMENT_REFUNDED', 'The order changed during payment. The charge has been refunded.');
   }

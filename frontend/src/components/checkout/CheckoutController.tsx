@@ -14,6 +14,7 @@ import DeliveryStep from './DeliveryStep'
 import PaymentStep from './PaymentStep'
 import ProcessingStep from './ProcessingStep'
 import CheckoutSuccess from './CheckoutSuccess'
+import CancelOrderDialog from '../CancelOrderDialog'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -112,16 +113,19 @@ const CheckoutController: React.FC = () => {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-        {order.status === 'checkout' && (
-          <Button
-            variant="outline"
-            className="min-w-[9rem]"
-            loading={exitState.loading}
-            onClick={() => exitCheckout({ variables: { orderId: order.orderId } })}
-          >
-            Back to order
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-3">
+          <CancelOrderDialog order={order} />
+          {order.status === 'checkout' && (
+            <Button
+              variant="outline"
+              className="min-w-[9rem]"
+              loading={exitState.loading}
+              onClick={() => exitCheckout({ variables: { orderId: order.orderId } })}
+            >
+              Back to order
+            </Button>
+          )}
+        </div>
       </div>
       {exitState.error && (
         <p role="alert" className="mb-4 text-sm text-red-600">

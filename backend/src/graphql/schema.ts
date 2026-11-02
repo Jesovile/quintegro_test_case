@@ -124,5 +124,6 @@ export const typeDefs = gql`
     removePromo(orderId: ID!): Order!
     payOrder(orderId: ID!, input: PayOrderInput!): Order!
     retryProcessing(orderId: ID!): Order!
+    cancelOrder(orderId: ID!): Order!
   }
 `;

@@ -44,13 +44,15 @@ export interface IBankGateway {
   refund(input: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }>;
 }
 
-export type FulfillmentStatus = 'running' | 'done' | 'failed';
+export type FulfillmentStatus = 'running' | 'done' | 'failed' | 'cancelled';
 
 // Prepares a paid order for delivery; resolves the address itself from addressRef
 export interface IFulfillmentService {
   // The same idempotencyKey returns the same job, so a start whose answer was lost never creates a second job
   start(input: { orderId: string; addressRef: string; idempotencyKey: string }): Promise<{ jobId: string }>;
   getStatus(jobId: string): Promise<{ status: FulfillmentStatus }>;
+  // Stops a job; 'too_late' when the goods have already been handed over for delivery
+  cancel(jobId: string): Promise<{ status: 'cancelled' | 'too_late' }>;
 }
 
 // Rejects with IntegrationUnavailableError when the call does not finish in time

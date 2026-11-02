@@ -72,12 +72,12 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: полный путь от `/order` до страницы успеха, заказ в History со статусом `deliver`; сбой обработки можно повторить.
 
 ## Slice 8 — Отмена заказа
-- [ ] Data / status model changes: `cancelRequested`, `payment.refunded`
-- [ ] Service + validation (domain layer): `cancelOrder`, `refund`, `ORDER_NOT_CANCELLABLE`, `REFUND_FAILED`; воркер пропускает отменяемые заказы; возврат при оплате уже отменённого заказа
-- [ ] API (resolver/route): `cancelOrder`
-- [ ] UI: `CancelOrderDialog` в мастере и в History, экран отменённого заказа
-- [ ] Tests (test-writer): AC-5.1 – AC-5.6, AC-7.3; гонка отмены и завершения обработки
-- [ ] Review + fixes
+- [x] Data / status model changes: `cancelRequested`, `payment.refunded`
+- [x] Service + validation (domain layer): `cancelOrder`, `refund`, `ORDER_NOT_CANCELLABLE`, `REFUND_FAILED`; воркер пропускает отменяемые заказы; возврат при оплате уже отменённого заказа
+- [x] API (resolver/route): `cancelOrder`
+- [x] UI: `CancelOrderDialog` в мастере и в History, экран отменённого заказа
+- [x] Tests (test-writer): AC-5.1 – AC-5.6, AC-7.3; гонка отмены и завершения обработки
+- [x] Review + fixes
 - Checkpoint to demo: отмена в `checkout` без возврата, в `paid` и `processing` — с возвратом, в `deliver` недоступна.
 
 ## Slice 9 — Расширенная a11y (можно отрезать)
@@ -145,3 +145,11 @@ manual check -> demo to the stakeholder.
   - Нет ограничения числа и частоты повторов обработки на заказ.
   - Мок службы обработки хранит задания в памяти без очистки; после перезапуска неизвестное задание считается сбоем.
   - Блокировка параллельных повторов (`retrying`) живёт в памяти процесса: при нескольких экземплярах backend нужен признак в хранилище.
+- Решения Slice 8:
+  - В контракт `IFulfillmentService` добавлен `cancel(jobId)`: без него отмену в `processing` (AC-5.2) нельзя сделать так, чтобы отменённый заказ не ушёл в доставку.
+  - Код отложенного возврата при оплате переименован в `REFUND_PENDING`; `REFUND_FAILED` означает неудачную отмену (AC-5.3).
+- Остаточные риски Slice 8:
+  - Неожиданная ошибка банка при возврате считается отказом (`REFUND_FAILED`), хотя деньги могли вернуться: сверка с банком выполняется только при таймауте или недоступности.
+  - Если задание обработки не удалось остановить после позднего старта, это только логируется: нужна ручная проверка.
+  - Блокировка параллельных отмен (`inFlight`) живёт в памяти процесса, как и в обработке.
+  - UI диалога отмены (Esc, фокус, закрытие только после отмены) проверен вручную, компонентных тестов нет.

@@ -53,18 +53,23 @@ export class MockBankGateway implements IBankGateway {
       : { status: 'declined' };
   }
 
-  async refund({ paymentId, idempotencyKey }: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }> {
+  async refund({ paymentId, amountUsd, idempotencyKey }: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }> {
     await wait(this.delayMs);
 
     const previous = this.refunds.get(idempotencyKey);
     if (previous) {
       return previous;
     }
-    const charged = [...this.charges.values()].some(({ result }) => result.status === 'approved' && result.paymentId === paymentId);
-    const result = { status: charged ? 'refunded' as const : 'failed' as const };
-    if (charged) {
-      this.refundedPayments.add(paymentId);
+    // Only the charged amount of a real payment can be refunded
+    const charged = [...this.charges.values()].some(
+      ({ result, amountUsd: charge }) => result.status === 'approved' && result.paymentId === paymentId && charge === amountUsd
+    );
+    if (!charged) {
+      // Not remembered: a failed refund may be retried with the same key
+      return { status: 'failed' };
     }
+    const result = { status: 'refunded' as const };
+    this.refundedPayments.add(paymentId);
     this.refunds.set(idempotencyKey, result);
     return result;
   }

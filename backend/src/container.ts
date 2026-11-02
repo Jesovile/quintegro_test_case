@@ -4,6 +4,7 @@ import { PromoService } from './services/promoService';
 import { CheckoutService } from './services/checkoutService';
 import { PaymentService } from './services/paymentService';
 import { ProcessingService } from './services/processingService';
+import { CancellationService } from './services/cancellationService';
 import { MockGeoService } from './integrations/mock/mockGeoService';
 import { MockBankGateway } from './integrations/mock/mockBankGateway';
 import { MockFulfillmentService } from './integrations/mock/mockFulfillmentService';
@@ -33,6 +34,7 @@ export const createContainer = () => {
     checkoutService: new CheckoutService(orderRepository, orderService, geoService, promoService, paymentService),
     paymentService,
     processingService: new ProcessingService(orderRepository, orderService, fulfillmentService),
+    cancellationService: new CancellationService(orderRepository, orderService, paymentService, bankGateway, fulfillmentService),
     promoService
   };
 };

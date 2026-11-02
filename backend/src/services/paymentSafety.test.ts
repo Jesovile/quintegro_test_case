@@ -149,7 +149,7 @@ describe('payment consistency with the bank', () => {
     await checkout.exitCheckout('order-2', 'user-1');
     bank.releaseCharges();
 
-    await expect(paying).rejects.toMatchObject({ code: 'REFUND_FAILED' });
+    await expect(paying).rejects.toMatchObject({ code: 'REFUND_PENDING' });
     expect(orders.findById('order-2')?.refundsPending).toEqual([{ paymentId: 'pay_1', amountUsd: 30000 }]);
   });
 

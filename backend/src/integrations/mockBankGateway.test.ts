@@ -61,6 +61,26 @@ describe('MockBankGateway', () => {
     expect(await bank.refund({ paymentId, amountUsd: 100, idempotencyKey: 'r1' })).toEqual({ status: 'refunded' });
   });
 
+  it('a repeated refund with another key is not a second refund of the money (AC-5.5)', async () => {
+    const bank = new MockBankGateway(0);
+    const { paymentId } = (await charge(bank, 'tok_approve_a')) as { paymentId: string };
+
+    await bank.refund({ paymentId, amountUsd: 100, idempotencyKey: 'r1' });
+
+    expect(await bank.getPaymentByKey('k1')).toMatchObject({ status: 'approved', refunded: true });
+  });
+
+  it('a failed refund is not remembered: the same key succeeds later (AC-5.3)', async () => {
+    const bank = new MockBankGateway(0);
+    const key = 'refund_shared';
+    expect(await bank.refund({ paymentId: 'pay_not_yet', amountUsd: 100, idempotencyKey: key })).toEqual({ status: 'failed' });
+    expect(await bank.refund({ paymentId: 'pay_not_yet', amountUsd: 100, idempotencyKey: key })).toEqual({ status: 'failed' });
+
+    const { paymentId } = (await charge(bank, 'tok_approve_a')) as { paymentId: string };
+
+    expect(await bank.refund({ paymentId, amountUsd: 100, idempotencyKey: key })).toEqual({ status: 'refunded' });
+  });
+
   it('refund fails for a payment the bank does not know', async () => {
     const bank = new MockBankGateway(0);
 

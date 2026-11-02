@@ -43,15 +43,21 @@ export class ProcessingService {
     }
     this.ticking = true;
     try {
-      for (const order of this.orderRepository.findAll()) {
+      for (const { orderId } of this.orderRepository.findAll()) {
+        // Read each order when its turn comes: earlier steps of the pass await external calls
+        const order = this.orderRepository.findById(orderId);
         try {
+          // An order being cancelled is left alone: the cancellation decides its next status
+          if (!order || order.cancelRequested) {
+            continue;
+          }
           if (order.status === 'paid') {
             await this.startProcessing(order);
           } else if (order.status === 'processing' && order.fulfillment && !order.fulfillment.failed) {
             await this.checkProcessing(order.orderId, order.fulfillment.jobId);
           }
         } catch (error) {
-          this.reportOnce(order.orderId, 'Processing an order failed', error instanceof Error ? error.name : 'unknown');
+          this.reportOnce(orderId, 'Processing an order failed', error instanceof Error ? error.name : 'unknown');
         }
       }
     } finally {
@@ -67,6 +73,9 @@ export class ProcessingService {
     if (alreadyMoving || order.status === 'deliver' || this.retrying.has(orderId)) {
       return this.orderService.toDTO(order);
     }
+    if (order.cancelRequested) {
+      throw new DomainError('INVALID_STATUS_TRANSITION', 'The order is being cancelled');
+    }
     if (order.status !== 'processing' || !order.addressRef || !order.fulfillment) {
       throw new DomainError('INVALID_STATUS_TRANSITION', 'Processing cannot be restarted for this order');
     }
@@ -79,8 +88,13 @@ export class ProcessingService {
       if (!jobId) {
         throw new DomainError('PROCESSING_FAILED', 'Processing could not be restarted. Please try again.');
       }
-      const updated = this.orderRepository.transition(orderId, ['processing'], { fulfillment: { jobId, failed: false, attempt } });
+      // A cancellation that began meanwhile wins: the new job is stopped
+      const current = this.orderRepository.findById(orderId);
+      const updated = current && !current.cancelRequested
+        ? this.orderRepository.transition(orderId, ['processing'], { fulfillment: { jobId, failed: false, attempt } })
+        : null;
       if (!updated) {
+        await this.stopJob(orderId, jobId);
         throw new DomainError('INVALID_STATUS_TRANSITION', 'The order has changed');
       }
       return this.orderService.toDTO(updated);
@@ -97,22 +111,31 @@ export class ProcessingService {
     // The key is the same on every pass until the start succeeds, so a lost answer never creates a second job
     const attempt = 1;
     const jobId = await this.startJob(order.orderId, order.addressRef, attempt);
-    if (jobId) {
-      // Stays paid when the start failed; the next pass tries again
-      this.orderRepository.transition(order.orderId, ['paid'], { status: 'processing', fulfillment: { jobId, failed: false, attempt } });
+    if (!jobId) {
+      // Stays paid; the next pass tries again
+      return;
+    }
+
+    const current = this.orderRepository.findById(order.orderId);
+    const updated = current?.status === 'paid' && !current.cancelRequested
+      ? this.orderRepository.transition(order.orderId, ['paid'], { status: 'processing', fulfillment: { jobId, failed: false, attempt } })
+      : null;
+    if (!updated) {
+      // The order was cancelled while the job was starting: the goods must not leave
+      await this.stopJob(order.orderId, jobId);
     }
   }
 
   private async checkProcessing(orderId: string, jobId: string): Promise<void> {
     const result = await this.call(orderId, () => this.fulfillmentService.getStatus(jobId));
-    // Only the job that is still current may finish the order
+    // Only the job that is still current may finish the order, and not while it is being cancelled (AC-5.6)
     const current = this.orderRepository.findById(orderId);
-    if (!result || current?.status !== 'processing' || current.fulfillment?.jobId !== jobId) {
+    if (!result || current?.status !== 'processing' || current.fulfillment?.jobId !== jobId || current.cancelRequested) {
       return;
     }
     if (result.status === 'done') {
       this.orderRepository.transition(orderId, ['processing'], { status: 'deliver' });
-    } else if (result.status === 'failed') {
+    } else if (result.status === 'failed' || result.status === 'cancelled') {
       console.warn('Processing failed', { orderId });
       this.orderRepository.transition(orderId, ['processing'], { fulfillment: { ...current.fulfillment, failed: true } });
     }
@@ -122,6 +145,14 @@ export class ProcessingService {
     const idempotencyKey = startKey(orderId, attempt);
     const started = await this.call(orderId, () => this.fulfillmentService.start({ orderId, addressRef, idempotencyKey }));
     return started?.jobId ?? null;
+  }
+
+  // Best effort: a job that cannot be stopped now is reported for a manual check
+  private async stopJob(orderId: string, jobId: string): Promise<void> {
+    const result = await this.call(orderId, () => this.fulfillmentService.cancel(jobId));
+    if (result?.status !== 'cancelled') {
+      console.error('A job for a cancelled order could not be stopped', { orderId, jobId });
+    }
   }
 
   // An outage returns null and is retried on the next pass; any other error is a bug

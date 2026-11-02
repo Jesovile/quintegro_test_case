@@ -16,7 +16,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_UNCONFIRMED: 'We could not confirm your payment yet. Use "Try again" to check it; your card will not be charged twice.',
   PAYMENT_IN_PROGRESS: 'A payment for this order is in progress. Please wait a moment and try again.',
   PAYMENT_REFUNDED: 'The order changed while you were paying, so the charge was refunded. Please review the order and pay again.',
-  REFUND_FAILED: 'The order changed while you were paying. The refund of that charge is pending; you will not lose the money.',
+  REFUND_PENDING: 'The order changed while you were paying. The refund of that charge is pending; you will not lose the money.',
+  REFUND_FAILED: 'We could not refund your payment right now, so the order was not cancelled. Please try again.',
+  ORDER_NOT_CANCELLABLE: 'This order can no longer be cancelled.',
+  CANCEL_UNAVAILABLE: 'We could not cancel the order right now. Please try again.',
+  REFUND_UNCONFIRMED: 'We are confirming the refund with the bank. The order will be cancelled shortly.',
   PROCESSING_FAILED: 'We could not restart processing. Please try again in a moment.',
   PROMO_NOT_FOUND: 'This promo code does not exist.',
   PROMO_EXPIRED: 'This promo code has expired.',
@@ -33,7 +37,7 @@ export const getErrorCode = (error: ApolloError): string | undefined => {
 // Failures where repeating the same request can help (outage, network); other codes need a different action
 export const isRetryable = (error: ApolloError): boolean => {
   const code = getErrorCode(error)
-  return !code || ['INTERNAL', 'GEO_UNAVAILABLE', 'PAYMENT_UNAVAILABLE', 'PAYMENT_UNCONFIRMED', 'PAYMENT_IN_PROGRESS'].includes(code)
+  return !code || ['INTERNAL', 'GEO_UNAVAILABLE', 'PAYMENT_UNAVAILABLE', 'PAYMENT_UNCONFIRMED', 'PAYMENT_IN_PROGRESS', 'REFUND_FAILED', 'CANCEL_UNAVAILABLE'].includes(code)
 }
 
 export const getErrorMessage = (error: ApolloError): string => {

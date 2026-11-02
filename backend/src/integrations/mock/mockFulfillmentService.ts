@@ -7,7 +7,7 @@ export const FULFILLMENT_FAILURE_MARKER = 'FAIL';
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class MockFulfillmentService implements IFulfillmentService {
-  private jobs = new Map<string, { finishAt: number; fails: boolean }>();
+  private jobs = new Map<string, { finishAt: number; fails: boolean; cancelled?: boolean }>();
   private jobsByKey = new Map<string, string>();
   private jobCountByOrder = new Map<string, number>();
 
@@ -45,9 +45,26 @@ export class MockFulfillmentService implements IFulfillmentService {
     if (!job) {
       return { status: 'failed' };
     }
+    if (job.cancelled) {
+      return { status: 'cancelled' };
+    }
     if (Date.now() < job.finishAt) {
       return { status: 'running' };
     }
     return { status: job.fails ? 'failed' : 'done' };
+  }
+
+  async cancel(jobId: string): Promise<{ status: 'cancelled' | 'too_late' }> {
+    await wait(this.delayMs);
+
+    const job = this.jobs.get(jobId);
+    // A finished delivery cannot be called back; a failed or unknown job has nothing left to stop
+    if (job && !job.cancelled && Date.now() >= job.finishAt && !job.fails) {
+      return { status: 'too_late' };
+    }
+    if (job) {
+      job.cancelled = true;
+    }
+    return { status: 'cancelled' };
   }
 }

@@ -212,7 +212,9 @@ interface IBankGateway {
 interface IFulfillmentService {
   // тот же idempotencyKey возвращает то же задание: старт с потерянным ответом не создаёт второе
   start(input: { orderId: string; addressRef: string; idempotencyKey: string }): Promise<{ jobId: string }>;
-  getStatus(jobId: string): Promise<{ status: 'running' | 'done' | 'failed' }>;
+  getStatus(jobId: string): Promise<{ status: 'running' | 'done' | 'failed' | 'cancelled' }>;
+  // останавливает задание; 'too_late', если товар уже передан в доставку — тогда отмена заказа отклоняется
+  cancel(jobId: string): Promise<{ status: 'cancelled' | 'too_late' }>;
 }
 ```
 
@@ -230,7 +232,7 @@ interface IFulfillmentService {
 
 Ошибки GraphQL передаются в `extensions.code`:
 
-`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `ADDRESS_NOT_FOUND`, `DELIVERY_REQUIRED`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `PAYMENT_IN_PROGRESS`, `PAYMENT_REFUNDED`, `REFUND_FAILED`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
+`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `ADDRESS_NOT_FOUND`, `DELIVERY_REQUIRED`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `PAYMENT_IN_PROGRESS`, `PAYMENT_REFUNDED`, `REFUND_PENDING`, `REFUND_FAILED`, `REFUND_UNCONFIRMED`, `CANCEL_UNAVAILABLE`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
 
 - Отказ в доступе и несуществующий заказ неразличимы для клиента.
 - При случайных 500 и таймаутах — сообщение и "Повторить", перед повтором статус перечитывается.

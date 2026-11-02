@@ -1,4 +1,5 @@
 import { ProcessingService } from '../services/processingService';
+import { CancellationService } from '../services/cancellationService';
 import { MockFulfillmentService } from '../integrations/mock/mockFulfillmentService';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Request } from 'express';
@@ -52,8 +53,10 @@ describe('payOrder over GraphQL', () => {
     const promoService = new PromoService(new InMemoryPromoRepository());
     const paymentService = new PaymentService(orders, orderService, geo, bank, { geoMs: 50, bankMs: 50 });
     checkout = new CheckoutService(orders, orderService, geo, promoService, paymentService);
-    const processingService = new ProcessingService(orders, orderService, new MockFulfillmentService(geo, 0, 0));
-    server = createApolloServer({ orderService, checkoutService: checkout, paymentService, processingService, promoService, authService });
+    const fulfillment = new MockFulfillmentService(geo, 0, 0);
+    const processingService = new ProcessingService(orders, orderService, fulfillment);
+    const cancellationService = new CancellationService(orders, orderService, paymentService, bank, fulfillment, 50);
+    server = createApolloServer({ orderService, checkoutService: checkout, paymentService, processingService, cancellationService, promoService, authService });
     owner = ctxFor(await authService.authenticateUser('john.doe', 'password123'));
     stranger = ctxFor(await authService.authenticateUser('jane.smith', 'password456'));
 

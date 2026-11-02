@@ -102,6 +102,16 @@ export const RETRY_PROCESSING: TypedDocumentNode<{ retryProcessing: Order }, { o
   }
 `;
 
+// Mutation to cancel an order; a paid order is refunded first
+export const CANCEL_ORDER: TypedDocumentNode<{ cancelOrder: Order }, { orderId: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation CancelOrder($orderId: ID!) {
+    cancelOrder(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER: TypedDocumentNode<
   { deleteProductFromOrder: Order },

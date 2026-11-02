@@ -53,6 +53,8 @@ export interface OrderRecord {
   refundsPending?: Array<{ paymentId: string; amountUsd: number }>;
   // attempt numbers the jobs of the order and forms the idempotency key of each start
   fulfillment?: { jobId: string; failed: boolean; attempt: number };
+  // Set while a cancellation refunds the payment; the processing worker leaves such an order alone
+  cancelRequested?: boolean;
 }
 
 // Without paymentId it is an attempt in progress: the order is frozen until the attempt is settled with the bank
@@ -60,6 +62,8 @@ export interface PaymentRecord {
   idempotencyKey: string;
   amountUsd: number;
   paymentId?: string;
+  // Set when the order was cancelled and the bank confirmed the refund
+  refunded?: boolean;
 }
 
 export interface Contact {

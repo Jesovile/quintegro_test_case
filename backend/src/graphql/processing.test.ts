@@ -11,6 +11,7 @@ import { PromoService } from '../services/promoService';
 import { CheckoutService } from '../services/checkoutService';
 import { PaymentService } from '../services/paymentService';
 import { ProcessingService } from '../services/processingService';
+import { CancellationService } from '../services/cancellationService';
 
 const delivery = (line1: string) => ({
   fullName: 'John Doe',
@@ -56,10 +57,13 @@ describe('processing over GraphQL (slice 7)', () => {
     const geo = new MockGeoService(0);
     const orderService = new OrderService(orders, new InMemoryProductRepository());
     const promoService = new PromoService(new InMemoryPromoRepository());
-    const paymentService = new PaymentService(orders, orderService, geo, new MockBankGateway(0), { geoMs: 50, bankMs: 50 });
+    const bank = new MockBankGateway(0);
+    const paymentService = new PaymentService(orders, orderService, geo, bank, { geoMs: 50, bankMs: 50 });
     checkout = new CheckoutService(orders, orderService, geo, promoService, paymentService);
-    processing = new ProcessingService(orders, orderService, new MockFulfillmentService(geo, 0, 0), 50);
-    server = createApolloServer({ orderService, checkoutService: checkout, paymentService, processingService: processing, promoService, authService });
+    const fulfillment = new MockFulfillmentService(geo, 0, 0);
+    processing = new ProcessingService(orders, orderService, fulfillment, 50);
+    const cancellationService = new CancellationService(orders, orderService, paymentService, bank, fulfillment, 50);
+    server = createApolloServer({ orderService, checkoutService: checkout, paymentService, processingService: processing, cancellationService, promoService, authService });
     owner = ctxFor(await authService.authenticateUser('john.doe', 'password123'));
     stranger = ctxFor(await authService.authenticateUser('jane.smith', 'password456'));
   });

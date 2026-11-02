@@ -8,7 +8,7 @@ import { getErrorCode, isRetryable } from '@/lib/graphqlErrors'
 import { Order } from '@/types/order'
 
 // Codes after which the order on screen is outdated (new total, payment dropped)
-const REFRESH_ORDER_CODES = ['TOTAL_CHANGED', 'PAYMENT_REFUNDED', 'REFUND_FAILED']
+const REFRESH_ORDER_CODES = ['TOTAL_CHANGED', 'PAYMENT_REFUNDED', 'REFUND_PENDING']
 
 // Tokenizes the card and pays; keeps the last token so an unanswered payment can be checked without a new charge
 export const usePayOrder = (order: Order, onPaid: () => void) => {

@@ -1,6 +1,8 @@
 import { Request } from 'express';
 import { DomainError } from '../errors/domainError';
 import type { GraphQLServices } from './server';
+import { OrderDTO } from '../types/entities';
+import { DeliveryInput } from '../services/checkoutValidation';
 
 export interface GraphQLContext {
   req: Request;
@@ -45,7 +47,20 @@ export const createResolvers = ({ orderService, checkoutService, authService, pr
         }
 
         return validation.promo;
+      },
+
+      me: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+        const user = authService.getUser(requireUser(context));
+        if (!user) {
+          throw new DomainError('UNAUTHENTICATED', 'Authentication required');
+        }
+        return user;
       }
+    },
+
+    Order: {
+      // The parent order has already been checked to belong to the requesting user
+      delivery: async (order: OrderDTO) => checkoutService.getDelivery(order.orderId)
     },
 
     Mutation: {
@@ -81,6 +96,10 @@ export const createResolvers = ({ orderService, checkoutService, authService, pr
 
       exitCheckout: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
         return checkoutService.exitCheckout(orderId, requireUser(context));
+      },
+
+      saveDelivery: async (_parent: unknown, { orderId, input }: { orderId: string, input: DeliveryInput }, context: GraphQLContext) => {
+        return checkoutService.saveDelivery(orderId, requireUser(context), input);
       }
     }
   };

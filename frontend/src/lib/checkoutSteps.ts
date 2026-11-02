@@ -14,7 +14,7 @@ const getFurthestStep = (order: Order): CheckoutStep | null => {
   switch (order.status) {
     case 'checkout':
       // Payment becomes reachable once delivery details are saved
-      return 'delivery'
+      return order.deliverySaved ? 'payment' : 'delivery'
     case 'paid':
     case 'processing':
       return 'processing'

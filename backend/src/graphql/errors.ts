@@ -7,7 +7,8 @@ export const formatGraphQLError = (error: GraphQLError): GraphQLFormattedError =
   const code = error.extensions?.code;
 
   if (originalError instanceof DomainError) {
-    return { message: originalError.message, path, extensions: { code: originalError.code } };
+    const { code: domainCode, fields } = originalError;
+    return { message: originalError.message, path, extensions: fields ? { code: domainCode, fields } : { code: domainCode } };
   }
 
   // Query and input validation errors are assigned their own code by Apollo

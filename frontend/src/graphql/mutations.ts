@@ -1,6 +1,6 @@
 import { gql, TypedDocumentNode } from '@apollo/client';
-import { Order } from '@/types/order';
-import { ORDER_FIELDS } from './queries';
+import { Delivery, DeliveryInput, Order } from '@/types/order';
+import { DELIVERY_FIELDS, ORDER_FIELDS } from './queries';
 
 // Mutation for user login
 export const LOGIN = gql`
@@ -40,6 +40,21 @@ export const EXIT_CHECKOUT: TypedDocumentNode<{ exitCheckout: Order }, { orderId
   mutation ExitCheckout($orderId: ID!) {
     exitCheckout(orderId: $orderId) {
       ...OrderFields
+    }
+  }
+`;
+
+// Mutation to validate and save contact and delivery address
+export const SAVE_DELIVERY: TypedDocumentNode<
+  { saveDelivery: Order & { delivery: Delivery | null } },
+  { orderId: string; input: DeliveryInput }
+> = gql`
+  ${ORDER_FIELDS}
+  ${DELIVERY_FIELDS}
+  mutation SaveDelivery($orderId: ID!, $input: DeliveryInput!) {
+    saveDelivery(orderId: $orderId, input: $input) {
+      ...OrderFields
+      ...DeliveryFields
     }
   }
 `;

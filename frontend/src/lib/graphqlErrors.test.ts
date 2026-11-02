@@ -41,3 +41,15 @@ describe('getErrorMessage (AC-6.1)', () => {
     expect(getErrorMessage(withCode('INTERNAL'))).not.toContain('boom')
   })
 })
+
+describe('isRetryable', () => {
+  it('offers a retry only when repeating the request can help', async () => {
+    const { isRetryable } = await import('./graphqlErrors')
+
+    expect(isRetryable(withCode('GEO_UNAVAILABLE'))).toBe(true)
+    expect(isRetryable(withCode('INTERNAL'))).toBe(true)
+    expect(isRetryable(new ApolloError({ networkError: new Error('offline') }))).toBe(true)
+    expect(isRetryable(withCode('ORDER_NOT_EDITABLE'))).toBe(false)
+    expect(isRetryable(withCode('ADDRESS_REJECTED'))).toBe(false)
+  })
+})

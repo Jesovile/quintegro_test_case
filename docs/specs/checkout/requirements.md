@@ -189,7 +189,8 @@ interface IGeoService {
   validateAddress(input: UsAddress): Promise<
     { ok: true; addressRef: string } | { ok: false; field: keyof UsAddress; reason: string }
   >;
-  getAddress(addressRef: string): Promise<UsAddress>;
+  getAddress(addressRef: string): Promise<UsAddress | null>; // null: адрес удалён или истёк, сервис отвечает ADDRESS_NOT_FOUND
+  deleteAddress(addressRef: string): Promise<void>;          // старый адрес удаляется при замене
 }
 
 // frontend: карта не проходит через наш API
@@ -219,13 +220,13 @@ interface IFulfillmentService {
 | Заказы | in-memory | `IOrderRepository` | — | Один экземпляр на REST и GraphQL; нужны `saveCheckoutData` и атомарный переход статуса |
 | Промокоды | in-memory | `IPromoRepository` | — | Без изменений |
 
-Таймауты вызовов внешних сервисов обязательны, ошибки приводятся к кодам ниже.
+Таймауты вызовов внешних сервисов обязательны (Гео: 5 с), ошибки приводятся к кодам ниже. Тексты причин от внешних сервисов клиенту не передаются: клиент получает фиксированное сообщение по полю.
 
 ## Errors and edge cases
 
 Ошибки GraphQL передаются в `extensions.code`:
 
-`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `REFUND_FAILED`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
+`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `ADDRESS_NOT_FOUND`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `REFUND_FAILED`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
 
 - Отказ в доступе и несуществующий заказ неразличимы для клиента.
 - При случайных 500 и таймаутах — сообщение и "Повторить", перед повтором статус перечитывается.

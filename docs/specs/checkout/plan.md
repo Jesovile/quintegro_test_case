@@ -36,12 +36,12 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: запуск чекаута, заказ заморожен, мастер показывает шаги и сводку, выход возвращает заказ в `created`.
 
 ## Slice 4 — Шаг Доставка и Гео-мок
-- [ ] Data / status model changes: `contact`, `addressRef`
-- [ ] Service + validation (domain layer): `integrations/interfaces.ts`, мок `IGeoService`, `checkoutValidation.ts`, `saveDelivery`, `Order.delivery`
-- [ ] API (resolver/route): `saveDelivery`, поле `delivery`, `VALIDATION_FAILED` с полями
-- [ ] UI: `form-field.tsx`, `lib/usStates.ts`, `useDeliveryForm`, `DeliveryStep`; блокировка перехода вперёд и по URL
-- [ ] Tests (test-writer): AC-1.4, AC-1.5, AC-2.1 – AC-2.5; персональные данные не попадают в логи
-- [ ] Review + fixes
+- [x] Data / status model changes: `contact`, `addressRef`
+- [x] Service + validation (domain layer): `integrations/interfaces.ts`, мок `IGeoService`, `checkoutValidation.ts`, `saveDelivery`, `Order.delivery`
+- [x] API (resolver/route): `saveDelivery`, поле `delivery`, `VALIDATION_FAILED` с полями
+- [x] UI: `form-field.tsx`, `lib/usStates.ts`, `useDeliveryForm`, `DeliveryStep`; блокировка перехода вперёд и по URL
+- [x] Tests (test-writer): AC-1.4, AC-1.5, AC-2.1 – AC-2.5; персональные данные не попадают в логи
+- [x] Review + fixes
 - Checkpoint to demo: нельзя пройти дальше с неверными данными, ZIP `00000` отклоняется, `99999` даёт "Повторить", после перезагрузки данные на месте.
 
 ## Slice 5 — Промокод в чекауте
@@ -128,3 +128,7 @@ manual check -> demo to the stakeholder.
   - UI-часть AC-1.3, AC-6.4, AC-7.1 не покрыта автотестами: нужна testing-library; проверено вручную в браузере.
   - Ключ токена `auth_token` используется напрямую в `UserProfile.tsx` мимо `lib/auth.ts`.
   - Без токена REST отвечает 403, а не 401.
+- Находки ревью Slice 4, по решению отложены:
+  - Правила полей доставки и список штатов продублированы во frontend и backend; типы `DeliveryInput` и `Delivery` объявлены в сервисах, а не в `types/entities.ts`.
+  - Сервер принимает телефон с посторонними символами вокруг цифр; хранятся только цифры.
+  - Сценарии "Гео-сервис недоступен при загрузке шага" и "адрес пропал" проверены тестами backend, в браузере не воспроизводились: мок не умеет отказывать на чтении.

@@ -141,7 +141,8 @@ export class OrderService {
       orderId: order.orderId,
       status: order.status,
       products: orderProducts,
-      totals: calculateOrderTotals(orderProducts, order.promo?.discount)
+      totals: calculateOrderTotals(orderProducts, order.promo?.discount),
+      deliverySaved: Boolean(order.contact && order.addressRef)
     };
   }
 }

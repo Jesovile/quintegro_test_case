@@ -1,5 +1,5 @@
 import { gql, TypedDocumentNode } from '@apollo/client';
-import { Order, Promo } from '@/types/order';
+import { Delivery, Order, Promo } from '@/types/order';
 
 export const ORDER_FIELDS = gql`
   fragment OrderFields on Order {
@@ -25,6 +25,42 @@ export const ORDER_FIELDS = gql`
       discount
       total
       currency
+    }
+    deliverySaved
+  }
+`;
+
+export const DELIVERY_FIELDS = gql`
+  fragment DeliveryFields on Order {
+    delivery {
+      fullName
+      email
+      phone
+      address {
+        line1
+        line2
+        city
+        state
+        zip
+      }
+    }
+  }
+`;
+
+// Order with the saved delivery details and the user's name for prefilling the checkout
+export const GET_CHECKOUT_ORDER: TypedDocumentNode<
+  { order: (Order & { delivery: Delivery | null }) | null; me: { name: string } | null },
+  { orderId: string }
+> = gql`
+  ${ORDER_FIELDS}
+  ${DELIVERY_FIELDS}
+  query GetCheckoutOrder($orderId: ID!) {
+    order(orderId: $orderId) {
+      ...OrderFields
+      ...DeliveryFields
+    }
+    me {
+      name
     }
   }
 `;

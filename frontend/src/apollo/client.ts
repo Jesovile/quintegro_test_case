@@ -26,11 +26,10 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
     notifyUnauthenticated();
   }
 
+  // Messages may echo input values (personal data), so only the code and path are logged
   if (graphQLErrors)
-    graphQLErrors.forEach(({ message, locations, path }) =>
-      console.log(
-        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-      )
+    graphQLErrors.forEach(({ extensions, path }) =>
+      console.log(`[GraphQL error]: Code: ${extensions?.code}, Path: ${path}`)
     );
   if (networkError) console.log(`[Network error]: ${networkError}`);
 });

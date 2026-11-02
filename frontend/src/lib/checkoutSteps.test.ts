@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { getAvailableSteps, resolveStep } from './checkoutSteps'
 import { Order, OrderStatus } from '@/types/order'
 
-const orderIn = (status: OrderStatus): Order => ({
+const orderIn = (status: OrderStatus, deliverySaved = false): Order => ({
   orderId: 'order-2',
   status,
   products: [],
   promo: null,
-  totals: { subtotal: 0, discount: 0, total: 0, currency: 'USD' }
+  totals: { subtotal: 0, discount: 0, total: 0, currency: 'USD' },
+  deliverySaved
 })
 
 describe('checkout steps', () => {
@@ -21,9 +22,18 @@ describe('checkout steps', () => {
     expect(resolveStep(orderIn('checkout'))).toBe('delivery')
   })
 
+  it('opens payment once delivery is saved and keeps delivery reachable (AC-1.5)', () => {
+    const order = orderIn('checkout', true)
+
+    expect(getAvailableSteps(order)).toEqual(['delivery', 'payment'])
+    expect(resolveStep(order)).toBe('payment')
+    expect(resolveStep(order, 'delivery')).toBe('delivery')
+    expect(resolveStep(order, 'processing')).toBe('payment')
+  })
+
   it('closes delivery and payment after payment (AC-1.7)', () => {
-    expect(getAvailableSteps(orderIn('paid'))).toEqual(['processing'])
-    expect(resolveStep(orderIn('processing'), 'delivery')).toBe('processing')
+    expect(getAvailableSteps(orderIn('paid', true))).toEqual(['processing'])
+    expect(resolveStep(orderIn('processing', true), 'delivery')).toBe('processing')
   })
 
   it('shows success for a delivered order', () => {

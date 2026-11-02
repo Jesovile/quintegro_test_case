@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@apollo/client'
-import { GET_ORDER } from '@/graphql/queries'
+import { GET_CHECKOUT_ORDER } from '@/graphql/queries'
 import { EXIT_CHECKOUT } from '@/graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views'
@@ -11,6 +11,7 @@ import { CheckoutStep, Order } from '@/types/order'
 import CheckoutStepper from './CheckoutStepper'
 import OrderSummary from './OrderSummary'
 import CheckoutStepPlaceholder from './CheckoutStepPlaceholder'
+import DeliveryStep from './DeliveryStep'
 
 const backToOrders = (
   <Button asChild variant="outline" className="mt-4">
@@ -18,10 +19,9 @@ const backToOrders = (
   </Button>
 )
 
-const renderStep = (step: CheckoutStep, order: Order) => {
+// Steps that are not built yet; Delivery is rendered by the controller with its data
+const renderPlaceholderStep = (step: Exclude<CheckoutStep, 'delivery'>, order: Order) => {
   switch (step) {
-    case 'delivery':
-      return <CheckoutStepPlaceholder title="Delivery" description="Contact and delivery address will be entered here." />
     case 'payment':
       return <CheckoutStepPlaceholder title="Payment" description="Payment details will be entered here." />
     case 'processing':
@@ -42,7 +42,7 @@ const CheckoutController: React.FC = () => {
   const { orderId, step } = useParams<{ orderId: string; step?: string }>()
   const history = useHistory()
 
-  const { data, loading, error, refetch } = useQuery(GET_ORDER, { variables: { orderId } })
+  const { data, loading, error, refetch } = useQuery(GET_CHECKOUT_ORDER, { variables: { orderId } })
   const [exitCheckout, exitState] = useMutation(EXIT_CHECKOUT, {
     onCompleted: () => history.push('/order'),
     // Failures are shown from exitState.error
@@ -71,6 +71,9 @@ const CheckoutController: React.FC = () => {
     return <EmptyState title="Order cancelled" description={`Order #${order.orderId} has been cancelled.`} action={backToOrders} />
   }
 
+  // Saved delivery that could not be read (Geo service down or address gone); the order itself loaded
+  const deliveryLoadError = error && order.deliverySaved && !order.delivery ? error : undefined
+
   const currentStep = resolveStep(order, step)
   if (currentStep && currentStep !== step) {
     return <Redirect to={checkoutPath(order.orderId, currentStep)} />
@@ -98,7 +101,21 @@ const CheckoutController: React.FC = () => {
       )}
       {currentStep && currentStep !== 'success' && <CheckoutStepper order={order} currentStep={currentStep} />}
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <section aria-labelledby="checkout-step-title">{currentStep && renderStep(currentStep, order)}</section>
+        <section aria-labelledby="checkout-step-title">
+          {currentStep === 'delivery' && deliveryLoadError && getErrorCode(deliveryLoadError) !== 'ADDRESS_NOT_FOUND' ? (
+            <ErrorState message={getErrorMessage(deliveryLoadError)} onRetry={() => refetch()} />
+          ) : currentStep === 'delivery' ? (
+            <DeliveryStep
+              order={order}
+              delivery={order.delivery}
+              defaultFullName={data?.me?.name ?? ''}
+              notice={deliveryLoadError ? getErrorMessage(deliveryLoadError) : undefined}
+              onSaved={() => history.push(checkoutPath(order.orderId, 'payment'))}
+            />
+          ) : (
+            currentStep && renderPlaceholderStep(currentStep, order)
+          )}
+        </section>
         <OrderSummary order={order} />
       </div>
     </div>

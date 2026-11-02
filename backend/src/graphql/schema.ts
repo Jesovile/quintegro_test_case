@@ -26,6 +26,44 @@ export const typeDefs = gql`
     products: [OrderItem!]!
     promo: Promo
     totals: OrderTotals!
+    deliverySaved: Boolean!
+    # Requested only by the checkout: the address is read from the Geo service
+    delivery: Delivery
+  }
+
+  type UsAddress {
+    line1: String!
+    line2: String
+    city: String!
+    state: String!
+    zip: String!
+  }
+
+  type Delivery {
+    fullName: String!
+    email: String!
+    phone: String!
+    address: UsAddress!
+  }
+
+  input UsAddressInput {
+    line1: String!
+    line2: String
+    city: String!
+    state: String!
+    zip: String!
+  }
+
+  input DeliveryInput {
+    fullName: String!
+    email: String!
+    phone: String!
+    address: UsAddressInput!
+  }
+
+  type User {
+    id: ID!
+    name: String!
   }
 
   type OrderTotals {
@@ -61,6 +99,7 @@ export const typeDefs = gql`
     orders: [Order!]!
     order(orderId: ID!): Order
     promo(promoId: ID!): Promo
+    me: User!
   }
 
   type Mutation {
@@ -69,5 +108,6 @@ export const typeDefs = gql`
     updateProductAmount(orderId: ID!, productId: ID!, amount: Int!): Order!
     startCheckout(orderId: ID!): Order!
     exitCheckout(orderId: ID!): Order!
+    saveDelivery(orderId: ID!, input: DeliveryInput!): Order!
   }
 `;

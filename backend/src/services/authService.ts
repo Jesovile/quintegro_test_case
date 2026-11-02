@@ -10,6 +10,11 @@ export class AuthService {
     private userRepository: IUserRepository
   ) {}
 
+  getUser(userId: string): { id: string; name: string } | null {
+    const user = this.userRepository.findById(userId);
+    return user ? { id: user.id, name: user.name } : null;
+  }
+
   async authenticateUser(login: string, password: string): Promise<string | null> {
     const authRecord = this.authRepository.findByLoginAndPassword(login, password);
     

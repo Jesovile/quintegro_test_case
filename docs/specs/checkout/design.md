@@ -55,12 +55,16 @@ type Delivery { fullName: String!  email: String!  phone: String!  address: UsAd
 extend type Order {
   totals: OrderTotals!
   delivery: Delivery          # адрес запрашивается у Гео-сервиса только при выборе этого поля
+  deliverySaved: Boolean!     # контакты и адрес сохранены; открывает шаг Payment без запроса к Гео-сервису
   processingFailed: Boolean!
 }
 
 input UsAddressInput { line1: String!  line2: String  city: String!  state: String!  zip: String! }
 input DeliveryInput { fullName: String!  email: String!  phone: String!  address: UsAddressInput! }
 input PayOrderInput { cardToken: String!  expectedTotal: Int! }
+
+type User { id: ID!  name: String! }
+extend type Query { me: User! }   # имя для предзаполнения формы доставки
 
 extend type Mutation {
   updateProductAmount(orderId: ID!, productId: ID!, amount: Int!): Order!
@@ -95,10 +99,12 @@ REST: `POST /api/order/:orderId` и `POST /api/order/:orderId/sum` удаляю�
 | `errors/domainError.ts` | `DomainError(code, fields?)` — типизированные ошибки сервисов |
 | `graphql/errors.ts` | Одно место преобразования `DomainError` в `ApolloError`; прочие ошибки становятся `INTERNAL` без деталей |
 | `graphql/resolvers.ts` | Только разбор входа, `requireUser(context)`, вызов сервиса. Типы аргументов вместо `any` |
-| `integrations/interfaces.ts` | `IGeoService`, `IBankGateway`, `IFulfillmentService` |
+| `integrations/interfaces.ts` | `IGeoService`, `IBankGateway`, `IFulfillmentService`, `withTimeout` |
 | `integrations/mock/*` | Моки: асинхронные, с задержкой и сбоями |
 
 `console.log` в `updateOrder` удаляется.
+
+**Гео-сервис в `saveDelivery`:** повтор с теми же контактами и адресом не вызывает проверку адреса; при замене адреса старый удаляется, при неудачной записи удаляется новый. Таймаут и недоступность дают `GEO_UNAVAILABLE`, любая другая ошибка остаётся `INTERNAL`. Если адрес по `addressRef` пропал, чтение доставки даёт `ADDRESS_NOT_FOUND`; в Slice 6 оплата должна проверять, что адрес на месте.
 
 **Сценарии моков:**
 

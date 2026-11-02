@@ -45,6 +45,15 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  // Only these personal data are stored; the address lives in the Geo service behind addressRef
+  contact?: Contact;
+  addressRef?: string;
+}
+
+export interface Contact {
+  fullName: string;
+  email: string;
+  phone: string;
 }
 
 export interface OrderDTO {
@@ -57,6 +66,7 @@ export interface OrderDTO {
   }>;
   promo?: PromoEntity;
   totals: OrderTotals;
+  deliverySaved: boolean;
 }
 
 export interface PromoEntity {

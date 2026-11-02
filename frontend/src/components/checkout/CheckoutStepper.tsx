@@ -7,9 +7,11 @@ import { CheckoutStep, Order } from '@/types/order'
 interface CheckoutStepperProps {
   order: Order
   currentStep: CheckoutStep
+  // Called when the user follows a link to another step
+  onNavigate?: () => void
 }
 
-const CheckoutStepper: React.FC<CheckoutStepperProps> = ({ order, currentStep }) => {
+const CheckoutStepper: React.FC<CheckoutStepperProps> = ({ order, currentStep, onNavigate }) => {
   const available = getAvailableSteps(order)
 
   return (
@@ -36,6 +38,7 @@ const CheckoutStepper: React.FC<CheckoutStepperProps> = ({ order, currentStep })
             <li key={id}>
               {!isCurrent && available.includes(id) ? (
                 <Link
+                  onClick={onNavigate}
                   to={checkoutPath(order.orderId, id)}
                   className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline cursor-pointer"
                 >

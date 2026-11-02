@@ -5,9 +5,11 @@ import { GET_CHECKOUT_ORDER, GET_ORDER } from '@/graphql/queries'
 import { EXIT_CHECKOUT } from '@/graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views'
-import { checkoutPath, resolveStep } from '@/lib/checkoutSteps'
+import { CHECKOUT_STEP_HEADING_ID, STEP_LABELS, checkoutPath, resolveStep } from '@/lib/checkoutSteps'
 import { getErrorCode, getErrorMessage } from '@/lib/graphqlErrors'
 import { Order } from '@/types/order'
+import { useStepFocus } from '@/hooks/useStepFocus'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import CheckoutStepper from './CheckoutStepper'
 import OrderSummary from './OrderSummary'
 import DeliveryStep from './DeliveryStep'
@@ -44,6 +46,13 @@ const CheckoutController: React.FC = () => {
     skipPollAttempt: () => document.hidden,
     fetchPolicy: 'network-only'
   })
+
+  // The step actually on screen: null while loading or while a redirect fixes the URL
+  const shownOrder = data?.order
+  const resolvedStep = shownOrder ? resolveStep(shownOrder, step) : null
+  const shownStep = resolvedStep && resolvedStep === step ? resolvedStep : null
+  const { announcement, markUserNavigation } = useStepFocus(shownStep)
+  useDocumentTitle(shownStep && `Checkout: ${STEP_LABELS[shownStep]}`)
 
   const [exitCheckout, exitState] = useMutation(EXIT_CHECKOUT, {
     onCompleted: () => history.push('/order'),
@@ -95,11 +104,18 @@ const CheckoutController: React.FC = () => {
             delivery={order.delivery}
             defaultFullName={data?.me?.name ?? ''}
             notice={deliveryLoadError ? getErrorMessage(deliveryLoadError) : undefined}
+            onSubmit={markUserNavigation}
             onSaved={() => history.push(checkoutPath(order.orderId, 'payment'))}
           />
         )
       case 'payment':
-        return <PaymentStep order={order} onPaid={() => history.push(checkoutPath(order.orderId, 'processing'))} />
+        return (
+          <PaymentStep
+            order={order}
+            onSubmit={markUserNavigation}
+            onPaid={() => history.push(checkoutPath(order.orderId, 'processing'))}
+          />
+        )
       case 'processing':
         return <ProcessingStep order={order} />
       case 'success':
@@ -132,9 +148,15 @@ const CheckoutController: React.FC = () => {
           {getErrorMessage(exitState.error)}
         </p>
       )}
-      {currentStep && currentStep !== 'success' && <CheckoutStepper order={order} currentStep={currentStep} />}
+      {/* Steps the server moves to by itself are announced here; focus stays where the user is */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
+      {currentStep && currentStep !== 'success' && (
+        <CheckoutStepper order={order} currentStep={currentStep} onNavigate={markUserNavigation} />
+      )}
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <section aria-labelledby="checkout-step-title">{renderStep()}</section>
+        <section aria-labelledby={CHECKOUT_STEP_HEADING_ID}>{renderStep()}</section>
         <OrderSummary order={order} />
       </div>
     </div>

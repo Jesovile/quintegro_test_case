@@ -1,4 +1,5 @@
 import React from 'react'
+import { CHECKOUT_STEP_HEADING_ID } from '@/lib/checkoutSteps'
 import { useMutation } from '@apollo/client'
 import { Loader2 } from 'lucide-react'
 import { RETRY_PROCESSING } from '@/graphql/mutations'
@@ -16,7 +17,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ order }) => {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <h2 id="checkout-step-title" className="text-xl font-semibold text-gray-900 mb-2">
+      <h2 id={CHECKOUT_STEP_HEADING_ID} tabIndex={-1} className="focus:outline-none text-xl font-semibold text-gray-900 mb-2">
         Processing
       </h2>
       {order.processingFailed ? (

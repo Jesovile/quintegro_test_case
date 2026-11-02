@@ -69,3 +69,37 @@ describe('checkout steps', () => {
     expect(resolveStep(orderIn(status))).toBeNull()
   })
 })
+
+describe('reaction to a step change (focus and announcements)', () => {
+  it('focuses the heading when the user moves to another step', async () => {
+    const { reactToStepChange } = await import('./checkoutSteps')
+    expect(reactToStepChange('delivery', 'payment', { userNavigated: true, focusLost: false })).toBe('focus')
+  })
+
+  it('announces a step the server moved to without taking focus', async () => {
+    const { reactToStepChange } = await import('./checkoutSteps')
+    expect(reactToStepChange('processing', 'success', { userNavigated: false, focusLost: false })).toBe('announce')
+  })
+
+  it('focuses the new heading when the focused control disappeared with the old step', async () => {
+    const { reactToStepChange } = await import('./checkoutSteps')
+    expect(reactToStepChange('processing', 'success', { userNavigated: false, focusLost: true })).toBe('focus')
+  })
+
+  it('focuses the first shown step only when focus was lost', async () => {
+    const { reactToStepChange } = await import('./checkoutSteps')
+    expect(reactToStepChange(null, 'delivery', { userNavigated: false, focusLost: true })).toBe('focus')
+    expect(reactToStepChange(null, 'delivery', { userNavigated: false, focusLost: false })).toBe('none')
+  })
+
+  it('does nothing when the step stays the same', async () => {
+    const { reactToStepChange } = await import('./checkoutSteps')
+    expect(reactToStepChange('payment', 'payment', { userNavigated: true, focusLost: true })).toBe('none')
+  })
+
+  it('names every step once, in one place', async () => {
+    const { CHECKOUT_STEPS, STEP_LABELS } = await import('./checkoutSteps')
+    expect(CHECKOUT_STEPS.map(({ label }) => label)).toEqual(['Delivery', 'Payment', 'Processing'])
+    expect(STEP_LABELS.success).toBe('Order placed')
+  })
+})

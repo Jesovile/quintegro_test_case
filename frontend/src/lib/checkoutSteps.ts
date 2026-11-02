@@ -1,10 +1,39 @@
 import { CheckoutStep, Order } from '@/types/order'
 
-export const CHECKOUT_STEPS: { id: CheckoutStep; label: string }[] = [
-  { id: 'delivery', label: 'Delivery' },
-  { id: 'payment', label: 'Payment' },
-  { id: 'processing', label: 'Processing' }
-]
+export const STEP_LABELS: Record<CheckoutStep, string> = {
+  delivery: 'Delivery',
+  payment: 'Payment',
+  processing: 'Processing',
+  success: 'Order placed'
+}
+
+// Steps shown in the progress bar; success is the end of the flow, not a step
+export const CHECKOUT_STEPS: { id: CheckoutStep; label: string }[] = (['delivery', 'payment', 'processing'] as const).map(id => ({
+  id,
+  label: STEP_LABELS[id]
+}))
+
+// Every step renders its heading with this id; it receives focus when the user moves to the step
+export const CHECKOUT_STEP_HEADING_ID = 'checkout-step-title'
+
+export type StepChangeReaction = 'focus' | 'announce' | 'none'
+
+// What to do when the rendered step changes:
+// - the user moved (saved, paid, followed a link) or focus was lost on <body> (arrival, a removed control): focus the new heading;
+// - the server moved the order (polling): announce it without taking focus away from what the user is doing.
+export const reactToStepChange = (
+  previous: CheckoutStep | null,
+  current: CheckoutStep,
+  { userNavigated, focusLost }: { userNavigated: boolean; focusLost: boolean }
+): StepChangeReaction => {
+  if (previous === current) {
+    return 'none'
+  }
+  if (focusLost || (previous !== null && userNavigated)) {
+    return 'focus'
+  }
+  return previous === null ? 'none' : 'announce'
+}
 
 const STEP_SEQUENCE: CheckoutStep[] = ['delivery', 'payment', 'processing', 'success']
 

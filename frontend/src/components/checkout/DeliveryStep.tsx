@@ -1,4 +1,5 @@
 import React from 'react'
+import { CHECKOUT_STEP_HEADING_ID } from '@/lib/checkoutSteps'
 import { useMutation } from '@apollo/client'
 import { SAVE_DELIVERY } from '@/graphql/mutations'
 import { Button } from '@/components/ui/button'
@@ -17,9 +18,11 @@ interface DeliveryStepProps {
   defaultFullName: string
   notice?: string
   onSaved: () => void
+  // Called when the user sends the form, before the server answers
+  onSubmit?: () => void
 }
 
-const DeliveryStep: React.FC<DeliveryStepProps> = ({ order, delivery, defaultFullName, notice, onSaved }) => {
+const DeliveryStep: React.FC<DeliveryStepProps> = ({ order, delivery, defaultFullName, notice, onSaved, onSubmit }) => {
   const form = useDeliveryForm(toDeliveryFormValues(delivery, defaultFullName))
   const { errors, fieldProps } = form
 
@@ -33,7 +36,10 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ order, delivery, defaultFul
     }
   })
 
-  const save = () => saveDelivery({ variables: { orderId: order.orderId, input: form.toInput() } })
+  const save = () => {
+    onSubmit?.()
+    return saveDelivery({ variables: { orderId: order.orderId, input: form.toInput() } })
+  }
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -47,7 +53,7 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ order, delivery, defaultFul
 
   return (
     <form noValidate onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <h2 id="checkout-step-title" className="text-xl font-semibold text-gray-900 mb-1">
+      <h2 id={CHECKOUT_STEP_HEADING_ID} tabIndex={-1} className="focus:outline-none text-xl font-semibold text-gray-900 mb-1">
         Delivery
       </h2>
       <p className="mb-6 text-sm text-gray-600">We deliver within the United States.</p>

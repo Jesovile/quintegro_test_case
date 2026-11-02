@@ -1,16 +1,18 @@
 import React, { useState } from 'react'
 import { useQuery } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
-import OrderListItem from './OrderListItem'
-import OrderSum from './OrderSum'
-import CheckoutAction from './CheckoutAction'
-import CancelOrderDialog from './CancelOrderDialog'
+import OrderCard from './OrderCard'
 import PreviouslyOrdered from './PreviouslyOrdered'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views'
 import { getErrorMessage } from '@/lib/graphqlErrors'
-import { ORDER_STATUS_LABELS, isCurrentOrder, isEditableOrder } from '@/lib/orderStatus'
+import { isCurrentOrder } from '@/lib/orderStatus'
+import { nextTabIndex } from '@/lib/tabs'
+import { Order } from '@/types/order'
 
 type OrderTab = 'current' | 'history'
+
+const tabId = (tab: OrderTab) => `order-tab-${tab}`
+const panelId = (tab: OrderTab) => `order-tabpanel-${tab}`
 
 const OrderList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<OrderTab>('current')
@@ -33,12 +35,22 @@ const OrderList: React.FC = () => {
 
   const currentOrders = orders.filter(order => isCurrentOrder(order.status))
   const historyOrders = orders.filter(order => !isCurrentOrder(order.status))
-  const visibleOrders = activeTab === 'current' ? currentOrders : historyOrders
 
-  const tabs: { id: OrderTab; label: string; count: number }[] = [
-    { id: 'current', label: 'Current', count: currentOrders.length },
-    { id: 'history', label: 'History', count: historyOrders.length }
+  const tabs: { id: OrderTab; label: string; orders: Order[]; emptyText: string }[] = [
+    { id: 'current', label: 'Current', orders: currentOrders, emptyText: 'You have no current orders.' },
+    { id: 'history', label: 'History', orders: historyOrders, emptyText: 'You have no past orders yet.' }
   ]
+
+  // Arrow keys move between tabs; only the selected tab is in the Tab order (roving tabindex)
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const next = nextTabIndex(index, event.key, tabs.length)
+    if (next === null) {
+      return
+    }
+    event.preventDefault()
+    setActiveTab(tabs[next].id)
+    document.getElementById(tabId(tabs[next].id))?.focus()
+  }
 
   return (
     <div>
@@ -48,63 +60,52 @@ const OrderList: React.FC = () => {
 
       <PreviouslyOrdered orders={historyOrders} />
 
-      <div role="tablist" className="flex gap-2 mb-6 border-b border-gray-200">
-        {tabs.map((tab) => (
+      <div role="tablist" aria-label="Orders" className="flex gap-2 mb-6 border-b border-gray-200">
+        {tabs.map((tab, index) => (
           <button
             key={tab.id}
             type="button"
             role="tab"
-            id={`order-tab-${tab.id}`}
+            id={tabId(tab.id)}
             aria-selected={activeTab === tab.id}
-            aria-controls={`order-tabpanel-${tab.id}`}
+            aria-controls={panelId(tab.id)}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => handleKeyDown(event, index)}
             className={`-mb-px px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.id
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
             }`}
           >
-            {tab.label} ({tab.count})
+            {tab.label} ({tab.orders.length})
           </button>
         ))}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`order-tabpanel-${activeTab}`}
-        aria-labelledby={`order-tab-${activeTab}`}
-      >
-        {visibleOrders.length === 0 ? (
-          <p className="text-center py-12 text-gray-600">
-            {activeTab === 'current' ? 'You have no current orders.' : 'You have no past orders yet.'}
-          </p>
-        ) : (
-          visibleOrders.map((order) => (
-            <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
-                Order #{order.orderId} - {ORDER_STATUS_LABELS[order.status]}
-              </h2>
-
-              {order.products.map((item) => (
-                <OrderListItem
-                  key={item.product.id}
-                  item={item}
-                  orderId={order.orderId}
-                  editable={isEditableOrder(order.status)}
-                />
+      {/* Both panels exist so every tab's aria-controls points at a real element; only the active one renders orders */}
+      {tabs.map((tab) => {
+        const active = activeTab === tab.id
+        const empty = tab.orders.length === 0
+        return (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={panelId(tab.id)}
+            aria-labelledby={tabId(tab.id)}
+            hidden={!active}
+            // A panel without focusable content must still be reachable from the keyboard
+            tabIndex={active && empty ? 0 : undefined}
+          >
+            {active &&
+              (empty ? (
+                <p className="text-center py-12 text-gray-600">{tab.emptyText}</p>
+              ) : (
+                tab.orders.map((order) => <OrderCard key={order.orderId} order={order} />)
               ))}
-              {order.products.length === 0 && (
-                <p className="text-center py-6 text-gray-600">This order is empty.</p>
-              )}
-              <OrderSum order={order} />
-              <div className="mt-4 flex flex-wrap justify-end gap-3">
-                <CancelOrderDialog order={order} />
-              </div>
-              <CheckoutAction order={order} />
-            </div>
-          ))
-        )}
-      </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

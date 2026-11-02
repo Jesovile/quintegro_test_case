@@ -81,12 +81,14 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: отмена в `checkout` без возврата, в `paid` и `processing` — с возвратом, в `deliver` недоступна.
 
 ## Slice 9 — Расширенная a11y (можно отрезать)
-- [ ] Data / status model changes: нет
-- [ ] Service + validation (domain layer): нет
-- [ ] API (resolver/route): нет
-- [ ] UI: перенос фокуса между шагами, `aria-live` для статусов, проверка скринридером
-- [ ] Tests (test-writer): клавиатурный проход мастера
-- [ ] Review + fixes
+- [x] Data / status model changes: нет
+- [x] Service + validation (domain layer): нет
+- [x] API (resolver/route): нет
+- [x] UI: перенос фокуса между шагами, `aria-live` для статусов, вкладки `/order` по WAI-ARIA
+- [ ] Проверка скринридером: не выполнена, скринридера в среде разработки нет
+- [x] Tests (test-writer): логика переноса фокуса и навигации по вкладкам
+- [ ] Клавиатурный проход мастера: перенесён в e2e (Final), в фоновой панели браузера нажатия Tab не доходят до страницы
+- [x] Review + fixes
 - Checkpoint to demo: весь чекаут проходится с клавиатуры, смена шага и статуса озвучивается.
 
 ## Final

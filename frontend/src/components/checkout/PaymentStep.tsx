@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { CHECKOUT_STEP_HEADING_ID } from '@/lib/checkoutSteps'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/state-views'
 import { usePaymentForm } from '@/hooks/usePaymentForm'
@@ -12,9 +13,11 @@ import PromoCodeForm from './PromoCodeForm'
 interface PaymentStepProps {
   order: Order
   onPaid: () => void
+  // Called when the user sends a payment, before the server answers
+  onSubmit?: () => void
 }
 
-const PaymentStep: React.FC<PaymentStepProps> = ({ order, onPaid }) => {
+const PaymentStep: React.FC<PaymentStepProps> = ({ order, onPaid, onSubmit }) => {
   const form = usePaymentForm()
   const payment = usePayOrder(order, onPaid)
   const { cardNumber, expiry, cvc } = form.values
@@ -30,6 +33,7 @@ const PaymentStep: React.FC<PaymentStepProps> = ({ order, onPaid }) => {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (form.validate()) {
+      onSubmit?.()
       payment.submit(form.values)
     }
   }
@@ -38,7 +42,7 @@ const PaymentStep: React.FC<PaymentStepProps> = ({ order, onPaid }) => {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <h2 id="checkout-step-title" className="text-xl font-semibold text-gray-900 mb-4">
+      <h2 id={CHECKOUT_STEP_HEADING_ID} tabIndex={-1} className="focus:outline-none text-xl font-semibold text-gray-900 mb-4">
         Payment
       </h2>
       <PromoCodeForm order={order} />
@@ -53,7 +57,13 @@ const PaymentStep: React.FC<PaymentStepProps> = ({ order, onPaid }) => {
         )}
         {error && !busy &&
           (payment.canRetry ? (
-            <ErrorState message={getErrorMessage(error)} onRetry={payment.retry} />
+            <ErrorState
+              message={getErrorMessage(error)}
+              onRetry={() => {
+                onSubmit?.()
+                payment.retry()
+              }}
+            />
           ) : (
             <p role="alert" className="mb-4 text-sm text-red-600">
               {getErrorMessage(error)}

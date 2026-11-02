@@ -3,6 +3,7 @@ import { DomainError } from '../errors/domainError';
 import type { GraphQLServices } from './server';
 import { OrderDTO } from '../types/entities';
 import { DeliveryInput } from '../services/checkoutValidation';
+import { PayOrderInput } from '../services/paymentService';
 
 export interface GraphQLContext {
   req: Request;
@@ -10,7 +11,7 @@ export interface GraphQLContext {
 
 const ORDER_NOT_FOUND_MESSAGE = 'Order not found or access denied';
 
-export const createResolvers = ({ orderService, checkoutService, authService, promoService }: GraphQLServices) => {
+export const createResolvers = ({ orderService, checkoutService, paymentService, authService, promoService }: GraphQLServices) => {
   const requireUser = (context: GraphQLContext): string => {
     const authHeader = context.req.headers.authorization;
     const decoded = authHeader?.startsWith('Bearer ') ? authService.verifyToken(authHeader.substring(7)) : null;
@@ -99,6 +100,10 @@ export const createResolvers = ({ orderService, checkoutService, authService, pr
 
       removePromo: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
         return checkoutService.removePromo(orderId, requireUser(context));
+      },
+
+      payOrder: async (_parent: unknown, { orderId, input }: { orderId: string, input: PayOrderInput }, context: GraphQLContext) => {
+        return paymentService.payOrder(orderId, requireUser(context), input);
       }
     }
   };

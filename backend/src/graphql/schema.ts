@@ -63,6 +63,13 @@ export const typeDefs = gql`
     address: UsAddressInput!
   }
 
+  # cardToken comes from the bank's tokenizer in the browser; card data never reaches this API.
+  # expectedTotal is the total shown to the user: the charge happens only if it still matches.
+  input PayOrderInput {
+    cardToken: String!
+    expectedTotal: Int!
+  }
+
   type User {
     id: ID!
     name: String!
@@ -113,5 +120,6 @@ export const typeDefs = gql`
     saveDelivery(orderId: ID!, input: DeliveryInput!): Order!
     applyPromo(orderId: ID!, code: String!): Order!
     removePromo(orderId: ID!): Order!
+    payOrder(orderId: ID!, input: PayOrderInput!): Order!
   }
 `;

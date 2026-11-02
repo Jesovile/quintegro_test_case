@@ -4,6 +4,7 @@ import { IGeoService, IntegrationUnavailableError, UsAddress, withTimeout } from
 import { DomainError } from '../errors/domainError';
 import { OrderService } from './orderService';
 import { PromoService } from './promoService';
+import { PaymentSettlement } from './paymentService';
 import { canTransition } from './orderStateMachine';
 import { DeliveryInput, normalizeDelivery, validateDelivery } from './checkoutValidation';
 
@@ -25,6 +26,8 @@ const ADDRESS_REJECTED_MESSAGES: Record<keyof UsAddress, string> = {
 const sameAddress = (a: UsAddress, b: UsAddress): boolean =>
   a.line1 === b.line1 && (a.line2 ?? '') === (b.line2 ?? '') && a.city === b.city && a.state === b.state && a.zip === b.zip;
 
+const hasPaymentInProgress = (order: OrderRecord): boolean => Boolean(order.payment && !order.payment.paymentId);
+
 const sameContact = (a: Contact, b: Contact): boolean =>
   a.fullName === b.fullName && a.email === b.email && a.phone === b.phone;
 
@@ -34,10 +37,12 @@ export class CheckoutService {
     private orderService: OrderService,
     private geoService: IGeoService,
     private promoService: PromoService,
+    private payments: PaymentSettlement,
     private geoTimeoutMs = GEO_TIMEOUT_MS
   ) {}
 
   async applyPromo(orderId: string, userId: string, code: string): Promise<OrderDTO> {
+    await this.settleBeforeChange(orderId, userId);
     const order = this.findOwnOrder(orderId, userId);
     this.assertInCheckout(order);
 
@@ -51,6 +56,7 @@ export class CheckoutService {
   }
 
   async removePromo(orderId: string, userId: string): Promise<OrderDTO> {
+    await this.settleBeforeChange(orderId, userId);
     const order = this.findOwnOrder(orderId, userId);
     this.assertInCheckout(order);
 
@@ -74,16 +80,19 @@ export class CheckoutService {
   }
 
   async exitCheckout(orderId: string, userId: string): Promise<OrderDTO> {
+    await this.settleBeforeChange(orderId, userId);
     const order = this.findOwnOrder(orderId, userId);
 
     if (order.status === 'created') {
       return this.orderService.toDTO(order);
     }
 
+    this.assertNoPaymentInProgress(order);
     return this.moveTo(order, 'created');
   }
 
   async saveDelivery(orderId: string, userId: string, input: DeliveryInput): Promise<OrderDTO> {
+    await this.settleBeforeChange(orderId, userId);
     const order = this.findOwnOrder(orderId, userId);
     this.assertInCheckout(order);
 
@@ -105,6 +114,13 @@ export class CheckoutService {
     if (!result.ok) {
       const message = ADDRESS_REJECTED_MESSAGES[result.field];
       throw new DomainError('ADDRESS_REJECTED', message, [{ field: `address.${result.field}`, message }]);
+    }
+
+    // A payment may have started while the address was being checked
+    const latest = this.orderRepository.findById(orderId);
+    if (latest && hasPaymentInProgress(latest)) {
+      await this.forgetAddress(orderId, result.addressRef);
+      throw new DomainError('PAYMENT_IN_PROGRESS', 'A payment is in progress. Please wait for it to finish.');
     }
 
     // The order may have left checkout while the address was being checked
@@ -166,7 +182,28 @@ export class CheckoutService {
     return order;
   }
 
+  // An order with a payment attempt in progress is frozen; the attempt is resolved with the bank first.
+  // Callers read the order again afterwards: a parallel request may have changed it during the await.
+  private async settleBeforeChange(orderId: string, userId: string): Promise<void> {
+    const order = this.findOwnOrder(orderId, userId);
+    if (hasPaymentInProgress(order) && (await this.payments.settlePendingPayment(orderId)) === 'paid') {
+      throw new DomainError('ORDER_NOT_EDITABLE', 'This order has already been paid');
+    }
+  }
+
+  // Synchronous check right before a write: a payment attempt started by another request wins
+  private assertNoPaymentInProgress(order: OrderRecord): void {
+    const latest = this.orderRepository.findById(order.orderId);
+    if (latest && hasPaymentInProgress(latest)) {
+      throw new DomainError('PAYMENT_IN_PROGRESS', 'A payment is in progress. Please wait for it to finish.');
+    }
+  }
+
   private updateInCheckout(orderId: string, patch: OrderTransitionPatch): OrderDTO {
+    const latest = this.orderRepository.findById(orderId);
+    if (latest) {
+      this.assertNoPaymentInProgress(latest);
+    }
     const updated = this.orderRepository.transition(orderId, ['checkout'], patch);
     if (!updated) {
       throw new DomainError('ORDER_NOT_EDITABLE', 'This order can no longer be changed');

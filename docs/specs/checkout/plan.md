@@ -54,12 +54,12 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: `SAVE10` уменьшает итог, снимается обратно, `SAVE5` даёт понятную ошибку.
 
 ## Slice 6 — Оплата и банковский мок
-- [ ] Data / status model changes: `payment`
-- [ ] Service + validation (domain layer): мок `IBankGateway`, `payOrder`, ключ идемпотентности, `TOTAL_CHANGED`, `PAYMENT_*`
-- [ ] API (resolver/route): `payOrder`
-- [ ] UI: `ICardTokenizer` и мок, `usePaymentForm`, `PaymentStep`, новый итог при `TOTAL_CHANGED`
-- [ ] Tests (test-writer): AC-1.7, AC-3.1 – AC-3.7; одно списание при повторе и двух вкладках
-- [ ] Review + fixes
+- [x] Data / status model changes: `payment`
+- [x] Service + validation (domain layer): мок `IBankGateway`, `payOrder`, ключ идемпотентности, `TOTAL_CHANGED`, `PAYMENT_*`
+- [x] API (resolver/route): `payOrder`
+- [x] UI: `ICardTokenizer` и мок, `usePaymentForm`, `PaymentStep`, новый итог при `TOTAL_CHANGED`
+- [x] Tests (test-writer): AC-1.7, AC-3.1 – AC-3.7; одно списание при повторе и двух вкладках
+- [x] Review + fixes
 - Checkpoint to demo: тестовая карта переводит заказ в `paid`, отказ и таймаут обрабатываются, повтор не списывает дважды.
 
 ## Slice 7 — Обработка и страница успеха
@@ -136,3 +136,7 @@ manual check -> demo to the stakeholder.
   - Заменить применённый промокод можно только через "Remove", хотя сервер поддерживает замену напрямую.
   - Нет подсказки о регистре: `save10` даёт "does not exist".
 - Для Slice 6 (из ревью Slice 4 и 5): сумму к списанию брать только из серверного расчёта, промокод и наличие адреса в Гео-сервисе проверять заново в момент оплаты.
+- Остаточные риски Slice 6 (мок банка отвечает мгновенно, реальный банк может иначе):
+  - Попытка, о которой банк ничего не знает, снимается при правке заказа. Если её списание всё же дойдёт до банка позже, а запрос оплаты к тому моменту уже оборвался, возврата не будет: нужна сверка с банком по `paymentId` в фоне.
+  - Платежи из `refundsPending` пока никто не возвращает повторно: нужна фоновая задача (связано с Slice 8).
+  - UI оплаты (блокировка кнопки, "Try again", обновление итога при `TOTAL_CHANGED`) проверен вручную, компонентных тестов нет.

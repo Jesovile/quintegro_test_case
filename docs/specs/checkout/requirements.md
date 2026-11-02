@@ -202,7 +202,10 @@ interface IBankGateway {
   charge(input: { cardToken: string; amountUsd: number; idempotencyKey: string }): Promise<
     { status: 'approved'; paymentId: string } | { status: 'declined'; reason: string }
   >;
-  getPaymentByKey(idempotencyKey: string): Promise<{ status: 'approved' | 'declined' | 'unknown'; paymentId?: string }>;
+  // сумма и признак возврата нужны, чтобы не засчитать возвращённое списание или списание другой суммы
+  getPaymentByKey(idempotencyKey: string): Promise<
+    { status: 'approved'; paymentId: string; amountUsd: number; refunded: boolean } | { status: 'declined' } | { status: 'unknown' }
+  >;
   refund(input: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }>;
 }
 
@@ -226,7 +229,7 @@ interface IFulfillmentService {
 
 Ошибки GraphQL передаются в `extensions.code`:
 
-`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `ADDRESS_NOT_FOUND`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `REFUND_FAILED`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
+`UNAUTHENTICATED`, `INTERNAL`, `ORDER_NOT_FOUND`, `ORDER_EMPTY`, `ORDER_NOT_EDITABLE`, `ORDER_NOT_CANCELLABLE`, `INVALID_STATUS_TRANSITION`, `VALIDATION_FAILED` (с полями), `ADDRESS_REJECTED`, `GEO_UNAVAILABLE`, `ADDRESS_NOT_FOUND`, `DELIVERY_REQUIRED`, `PAYMENT_DECLINED`, `PAYMENT_UNAVAILABLE`, `PAYMENT_UNCONFIRMED`, `PAYMENT_IN_PROGRESS`, `PAYMENT_REFUNDED`, `REFUND_FAILED`, `PROCESSING_FAILED`, `PROMO_NOT_FOUND`, `PROMO_EXPIRED`, `TOTAL_CHANGED`.
 
 - Отказ в доступе и несуществующий заказ неразличимы для клиента.
 - При случайных 500 и таймаутах — сообщение и "Повторить", перед повтором статус перечитывается.

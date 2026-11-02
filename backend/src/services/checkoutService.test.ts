@@ -16,7 +16,8 @@ const input = {
 const setup = (geo: IGeoService, timeoutMs = 50) => {
   const orders = new InMemoryOrderRepository();
   const promos = new PromoService(new InMemoryPromoRepository());
-  const service = new CheckoutService(orders, new OrderService(orders, new InMemoryProductRepository()), geo, promos, timeoutMs);
+  const noPayments = { settlePendingPayment: async () => 'clear' as const };
+  const service = new CheckoutService(orders, new OrderService(orders, new InMemoryProductRepository()), geo, promos, noPayments, timeoutMs);
   return { orders, service };
 };
 

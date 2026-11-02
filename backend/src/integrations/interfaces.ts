@@ -26,6 +26,24 @@ export interface IGeoService {
   deleteAddress(addressRef: string): Promise<void>;
 }
 
+export type ChargeResult =
+  | { status: 'approved'; paymentId: string }
+  | { status: 'declined'; reason: string };
+
+export type PaymentLookup =
+  | { status: 'approved'; paymentId: string; amountUsd: number; refunded: boolean }
+  | { status: 'declined' }
+  | { status: 'unknown' };
+
+// Card data never reaches this service: the browser exchanges it for a cardToken with the bank
+export interface IBankGateway {
+  // Repeating a charge with the same idempotencyKey never charges twice and returns the first result
+  charge(input: { cardToken: string; amountUsd: number; idempotencyKey: string }): Promise<ChargeResult>;
+  // Used when a charge timed out: tells whether the bank applied it
+  getPaymentByKey(idempotencyKey: string): Promise<PaymentLookup>;
+  refund(input: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }>;
+}
+
 // Rejects with IntegrationUnavailableError when the call does not finish in time
 export const withTimeout = <T>(call: Promise<T>, ms: number, service: string): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;

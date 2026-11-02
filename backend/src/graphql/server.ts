@@ -4,7 +4,7 @@ import { createResolvers, GraphQLContext } from './resolvers';
 import { formatGraphQLError } from './errors';
 import { Container } from '../container';
 
-export type GraphQLServices = Pick<Container, 'orderService' | 'checkoutService' | 'authService' | 'promoService'>;
+export type GraphQLServices = Pick<Container, 'orderService' | 'checkoutService' | 'paymentService' | 'authService' | 'promoService'>;
 
 export const createApolloServer = (services: GraphQLServices) => {
   const resolvers = createResolvers(services);

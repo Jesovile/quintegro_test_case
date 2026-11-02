@@ -48,6 +48,16 @@ export interface OrderRecord {
   // Only these personal data are stored; the address lives in the Geo service behind addressRef
   contact?: Contact;
   addressRef?: string;
+  payment?: PaymentRecord;
+  // Charges that could not be refunded automatically; kept for a retry
+  refundsPending?: Array<{ paymentId: string; amountUsd: number }>;
+}
+
+// Without paymentId it is an attempt in progress: the order is frozen until the attempt is settled with the bank
+export interface PaymentRecord {
+  idempotencyKey: string;
+  amountUsd: number;
+  paymentId?: string;
 }
 
 export interface Contact {

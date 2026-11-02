@@ -9,6 +9,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   ADDRESS_REJECTED: 'We could not verify this address.',
   GEO_UNAVAILABLE: 'We could not check the address right now. Please try again.',
   ADDRESS_NOT_FOUND: 'Your saved address is no longer available. Please enter it again.',
+  DELIVERY_REQUIRED: 'Please enter delivery details first.',
+  TOTAL_CHANGED: 'The order total has changed. Please review the new total and pay again.',
+  PAYMENT_DECLINED: 'Your card was declined. Please use another card.',
+  PAYMENT_UNAVAILABLE: 'The payment service is unavailable. Please try again.',
+  PAYMENT_UNCONFIRMED: 'We could not confirm your payment yet. Use "Try again" to check it; your card will not be charged twice.',
+  PAYMENT_IN_PROGRESS: 'A payment for this order is in progress. Please wait a moment and try again.',
+  PAYMENT_REFUNDED: 'The order changed while you were paying, so the charge was refunded. Please review the order and pay again.',
+  REFUND_FAILED: 'The order changed while you were paying. The refund of that charge is pending; you will not lose the money.',
   PROMO_NOT_FOUND: 'This promo code does not exist.',
   PROMO_EXPIRED: 'This promo code has expired.',
   UNAUTHENTICATED: 'Please sign in to continue.'
@@ -24,7 +32,7 @@ export const getErrorCode = (error: ApolloError): string | undefined => {
 // Failures where repeating the same request can help (outage, network); other codes need a different action
 export const isRetryable = (error: ApolloError): boolean => {
   const code = getErrorCode(error)
-  return !code || code === 'INTERNAL' || code === 'GEO_UNAVAILABLE'
+  return !code || ['INTERNAL', 'GEO_UNAVAILABLE', 'PAYMENT_UNAVAILABLE', 'PAYMENT_UNCONFIRMED', 'PAYMENT_IN_PROGRESS'].includes(code)
 }
 
 export const getErrorMessage = (error: ApolloError): string => {

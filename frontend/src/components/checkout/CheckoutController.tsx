@@ -20,11 +20,9 @@ const backToOrders = (
   </Button>
 )
 
-// Steps that are not built yet; Delivery is rendered by the controller with its data
-const renderPlaceholderStep = (step: Exclude<CheckoutStep, 'delivery'>, order: Order) => {
+// Steps that are not built yet; Delivery and Payment are rendered by the controller with their callbacks
+const renderPlaceholderStep = (step: Exclude<CheckoutStep, 'delivery' | 'payment'>, order: Order) => {
   switch (step) {
-    case 'payment':
-      return <PaymentStep order={order} />
     case 'processing':
       return <CheckoutStepPlaceholder title="Processing" description={`Order #${order.orderId} is being processed.`} />
     case 'success':
@@ -46,8 +44,11 @@ const CheckoutController: React.FC = () => {
   const { data, loading, error, refetch } = useQuery(GET_CHECKOUT_ORDER, { variables: { orderId } })
   const [exitCheckout, exitState] = useMutation(EXIT_CHECKOUT, {
     onCompleted: () => history.push('/order'),
-    // Failures are shown from exitState.error
-    onError: () => undefined
+    // Failures are shown from exitState.error. The order may have changed on the server
+    // (e.g. an unanswered payment turned out to be paid), so the step is chosen from fresh data.
+    onError: () => {
+      refetch()
+    }
   })
 
   if (loading && !data) {
@@ -113,6 +114,8 @@ const CheckoutController: React.FC = () => {
               notice={deliveryLoadError ? getErrorMessage(deliveryLoadError) : undefined}
               onSaved={() => history.push(checkoutPath(order.orderId, 'payment'))}
             />
+          ) : currentStep === 'payment' ? (
+            <PaymentStep order={order} onPaid={() => history.push(checkoutPath(order.orderId, 'processing'))} />
           ) : (
             currentStep && renderPlaceholderStep(currentStep, order)
           )}

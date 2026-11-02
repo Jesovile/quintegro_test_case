@@ -79,6 +79,19 @@ export const REMOVE_PROMO: TypedDocumentNode<{ removePromo: Order }, { orderId: 
   }
 `;
 
+// Mutation to pay for an order in checkout with a card token from the tokenizer
+export const PAY_ORDER: TypedDocumentNode<
+  { payOrder: Order },
+  { orderId: string; input: { cardToken: string; expectedTotal: number } }
+> = gql`
+  ${ORDER_FIELDS}
+  mutation PayOrder($orderId: ID!, $input: PayOrderInput!) {
+    payOrder(orderId: $orderId, input: $input) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER: TypedDocumentNode<
   { deleteProductFromOrder: Order },

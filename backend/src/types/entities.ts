@@ -51,6 +51,8 @@ export interface OrderRecord {
   payment?: PaymentRecord;
   // Charges that could not be refunded automatically; kept for a retry
   refundsPending?: Array<{ paymentId: string; amountUsd: number }>;
+  // attempt numbers the jobs of the order and forms the idempotency key of each start
+  fulfillment?: { jobId: string; failed: boolean; attempt: number };
 }
 
 // Without paymentId it is an attempt in progress: the order is frozen until the attempt is settled with the bank
@@ -78,6 +80,7 @@ export interface OrderDTO {
   promoActive: boolean;
   totals: OrderTotals;
   deliverySaved: boolean;
+  processingFailed: boolean;
 }
 
 export interface PromoEntity {

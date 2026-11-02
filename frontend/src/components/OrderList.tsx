@@ -95,7 +95,7 @@ const OrderList: React.FC = () => {
               {order.products.length === 0 && (
                 <p className="text-center py-6 text-gray-600">This order is empty.</p>
               )}
-              <OrderSum totals={order.totals} />
+              <OrderSum order={order} />
               <CheckoutAction order={order} />
             </div>
           ))

@@ -44,6 +44,15 @@ export interface IBankGateway {
   refund(input: { paymentId: string; amountUsd: number; idempotencyKey: string }): Promise<{ status: 'refunded' | 'failed' }>;
 }
 
+export type FulfillmentStatus = 'running' | 'done' | 'failed';
+
+// Prepares a paid order for delivery; resolves the address itself from addressRef
+export interface IFulfillmentService {
+  // The same idempotencyKey returns the same job, so a start whose answer was lost never creates a second job
+  start(input: { orderId: string; addressRef: string; idempotencyKey: string }): Promise<{ jobId: string }>;
+  getStatus(jobId: string): Promise<{ status: FulfillmentStatus }>;
+}
+
 // Rejects with IntegrationUnavailableError when the call does not finish in time
 export const withTimeout = <T>(call: Promise<T>, ms: number, service: string): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;

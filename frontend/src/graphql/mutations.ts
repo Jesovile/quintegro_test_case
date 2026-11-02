@@ -92,6 +92,16 @@ export const PAY_ORDER: TypedDocumentNode<
   }
 `;
 
+// Mutation to restart processing after it failed
+export const RETRY_PROCESSING: TypedDocumentNode<{ retryProcessing: Order }, { orderId: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation RetryProcessing($orderId: ID!) {
+    retryProcessing(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER: TypedDocumentNode<
   { deleteProductFromOrder: Order },

@@ -9,7 +9,8 @@ const orderIn = (status: OrderStatus, deliverySaved = false): Order => ({
   promo: null,
   totals: { subtotal: 0, discount: 0, total: 0, currency: 'USD' },
   deliverySaved,
-  promoActive: false
+  promoActive: false,
+  processingFailed: false
 })
 
 describe('checkout steps', () => {
@@ -35,6 +36,29 @@ describe('checkout steps', () => {
   it('closes delivery and payment after payment (AC-1.7)', () => {
     expect(getAvailableSteps(orderIn('paid', true))).toEqual(['processing'])
     expect(resolveStep(orderIn('processing', true), 'delivery')).toBe('processing')
+  })
+
+  it('keeps the processing step for a failed job so Retry and Cancel can be shown (AC-4.4)', () => {
+    const failed = { ...orderIn('processing', true), processingFailed: true }
+
+    expect(resolveStep(failed)).toBe('processing')
+    expect(resolveStep(failed, 'success')).toBe('processing')
+    expect(resolveStep(failed, 'payment')).toBe('processing')
+  })
+
+  it('opens processing for a paid order and success only after deliver (AC-4.1, AC-4.2)', () => {
+    expect(resolveStep(orderIn('paid', true))).toBe('processing')
+    expect(resolveStep(orderIn('processing', true), 'success')).toBe('processing')
+    expect(resolveStep(orderIn('deliver', true))).toBe('success')
+  })
+
+  it('does not let the Back button leave the success page for earlier steps (AC-4.5)', () => {
+    const done = orderIn('deliver', true)
+
+    expect(getAvailableSteps(done)).toEqual(['success'])
+    for (const step of ['delivery', 'payment', 'processing']) {
+      expect(resolveStep(done, step)).toBe('success')
+    }
   })
 
   it('shows success for a delivered order', () => {

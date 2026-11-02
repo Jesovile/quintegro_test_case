@@ -210,7 +210,8 @@ interface IBankGateway {
 }
 
 interface IFulfillmentService {
-  start(input: { orderId: string; addressRef: string }): Promise<{ jobId: string }>;
+  // тот же idempotencyKey возвращает то же задание: старт с потерянным ответом не создаёт второе
+  start(input: { orderId: string; addressRef: string; idempotencyKey: string }): Promise<{ jobId: string }>;
   getStatus(jobId: string): Promise<{ status: 'running' | 'done' | 'failed' }>;
 }
 ```
@@ -219,7 +220,7 @@ interface IFulfillmentService {
 |---|---|---|---|---|
 | Банк | mock | `IBankGateway`, `ICardTokenizer` | успех; отказ; таймаут — по тестовым номерам карт | Новые реализации; `ICardTokenizer` переходит на SDK провайдера; асинхронные подтверждения потребуют webhook |
 | Гео | mock | `IGeoService` | успех; неверный ZIP; недоступность — по тестовым ZIP | Новая реализация; хранение адреса остаётся на стороне сервиса |
-| Обработка | mock | `IFulfillmentService` | готово с задержкой; сбой — по признаку в адресе | Новая реализация; опрос можно заменить webhook |
+| Обработка | mock | `IFulfillmentService` | готово через 5 с; первое задание заказа с `FAIL` в улице падает, повтор проходит | Новая реализация; опрос можно заменить webhook |
 | Заказы | in-memory | `IOrderRepository` | — | Один экземпляр на REST и GraphQL; нужны `saveCheckoutData` и атомарный переход статуса |
 | Промокоды | in-memory | `IPromoRepository` | — | Без изменений |
 

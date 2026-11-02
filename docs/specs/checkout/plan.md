@@ -63,12 +63,12 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: тестовая карта переводит заказ в `paid`, отказ и таймаут обрабатываются, повтор не списывает дважды.
 
 ## Slice 7 — Обработка и страница успеха
-- [ ] Data / status model changes: `fulfillment`
-- [ ] Service + validation (domain layer): мок `IFulfillmentService`, `processingWorker.ts`, `retryProcessing`
-- [ ] API (resolver/route): `retryProcessing`, `processingFailed`
-- [ ] UI: `ProcessingStep` с опросом, `CheckoutSuccess` с кнопкой к каталогу (`/`)
-- [ ] Tests (test-writer): AC-4.1 – AC-4.5, AC-7.2; обработка не зависит от закрытой вкладки
-- [ ] Review + fixes
+- [x] Data / status model changes: `fulfillment`
+- [x] Service + validation (domain layer): мок `IFulfillmentService`, `processingService.ts` (воркер), `retryProcessing`
+- [x] API (resolver/route): `retryProcessing`, `processingFailed`
+- [x] UI: `ProcessingStep` с опросом, `CheckoutSuccess` с кнопкой к каталогу (`/`)
+- [x] Tests (test-writer): AC-4.1 – AC-4.5, AC-7.2; обработка не зависит от закрытой вкладки
+- [x] Review + fixes
 - Checkpoint to demo: полный путь от `/order` до страницы успеха, заказ в History со статусом `deliver`; сбой обработки можно повторить.
 
 ## Slice 8 — Отмена заказа
@@ -140,3 +140,8 @@ manual check -> demo to the stakeholder.
   - Попытка, о которой банк ничего не знает, снимается при правке заказа. Если её списание всё же дойдёт до банка позже, а запрос оплаты к тому моменту уже оборвался, возврата не будет: нужна сверка с банком по `paymentId` в фоне.
   - Платежи из `refundsPending` пока никто не возвращает повторно: нужна фоновая задача (связано с Slice 8).
   - UI оплаты (блокировка кнопки, "Try again", обновление итога при `TOTAL_CHANGED`) проверен вручную, компонентных тестов нет.
+- Находки ревью Slice 7, по решению отложены:
+  - Воркер обходит заказы последовательно: при недоступной службе каждый заказ задерживает проход до таймаута (5 с).
+  - Нет ограничения числа и частоты повторов обработки на заказ.
+  - Мок службы обработки хранит задания в памяти без очистки; после перезапуска неизвестное задание считается сбоем.
+  - Блокировка параллельных повторов (`retrying`) живёт в памяти процесса: при нескольких экземплярах backend нужен признак в хранилище.

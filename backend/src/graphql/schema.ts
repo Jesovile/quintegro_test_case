@@ -29,6 +29,8 @@ export const typeDefs = gql`
     promoActive: Boolean!
     totals: OrderTotals!
     deliverySaved: Boolean!
+    # true when processing failed and can be retried
+    processingFailed: Boolean!
     # Requested only by the checkout: the address is read from the Geo service
     delivery: Delivery
   }
@@ -121,5 +123,6 @@ export const typeDefs = gql`
     applyPromo(orderId: ID!, code: String!): Order!
     removePromo(orderId: ID!): Order!
     payOrder(orderId: ID!, input: PayOrderInput!): Order!
+    retryProcessing(orderId: ID!): Order!
   }
 `;

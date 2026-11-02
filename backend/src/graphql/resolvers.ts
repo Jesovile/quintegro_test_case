@@ -11,7 +11,7 @@ export interface GraphQLContext {
 
 const ORDER_NOT_FOUND_MESSAGE = 'Order not found or access denied';
 
-export const createResolvers = ({ orderService, checkoutService, paymentService, authService, promoService }: GraphQLServices) => {
+export const createResolvers = ({ orderService, checkoutService, paymentService, processingService, authService, promoService }: GraphQLServices) => {
   const requireUser = (context: GraphQLContext): string => {
     const authHeader = context.req.headers.authorization;
     const decoded = authHeader?.startsWith('Bearer ') ? authService.verifyToken(authHeader.substring(7)) : null;
@@ -104,6 +104,10 @@ export const createResolvers = ({ orderService, checkoutService, paymentService,
 
       payOrder: async (_parent: unknown, { orderId, input }: { orderId: string, input: PayOrderInput }, context: GraphQLContext) => {
         return paymentService.payOrder(orderId, requireUser(context), input);
+      },
+
+      retryProcessing: async (_parent: unknown, { orderId }: { orderId: string }, context: GraphQLContext) => {
+        return processingService.retryProcessing(orderId, requireUser(context));
       }
     }
   };

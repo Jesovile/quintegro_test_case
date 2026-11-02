@@ -34,6 +34,7 @@ export interface Order {
   totals: OrderTotals
   deliverySaved: boolean
   promoActive: boolean
+  processingFailed: boolean
 }
 
 export interface UsAddress {

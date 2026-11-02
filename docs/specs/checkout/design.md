@@ -96,7 +96,7 @@ REST: `POST /api/order/:orderId` и `POST /api/order/:orderId/sum` удаляю�
 | `services/pricing.ts` | Чистая функция расчёта `subtotal`, `discount`, `total` по данным заказа |
 | `services/checkoutValidation.ts` | Правила полей, справочник штатов США |
 | `services/orderStateMachine.ts` | Таблица разрешённых переходов |
-| `services/processingWorker.ts` | Раз в секунду берёт заказы в `paid` и `processing`, запускает и проверяет `IFulfillmentService`. Работает на сервере, поэтому не зависит от открытой вкладки |
+| `services/processingService.ts` | Фоновый воркер (запускается в `App.listen`) раз в секунду берёт заказы в `paid` и `processing`, запускает и проверяет `IFulfillmentService`; работает на сервере, поэтому не зависит от открытой вкладки. Заказ завершает только текущее задание. Недоступность службы откладывает шаг до следующего прохода. Здесь же `retryProcessing` |
 | `errors/domainError.ts` | `DomainError(code, fields?)` — типизированные ошибки сервисов |
 | `graphql/errors.ts` | Одно место преобразования `DomainError` в `ApolloError`; прочие ошибки становятся `INTERNAL` без деталей |
 | `graphql/resolvers.ts` | Только разбор входа, `requireUser(context)`, вызов сервиса. Типы аргументов вместо `any` |

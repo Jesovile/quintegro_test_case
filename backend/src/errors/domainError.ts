@@ -17,6 +17,7 @@ export type DomainErrorCode =
   | 'PAYMENT_IN_PROGRESS'
   | 'PAYMENT_REFUNDED'
   | 'REFUND_FAILED'
+  | 'PROCESSING_FAILED'
   | 'PROMO_NOT_FOUND'
   | 'PROMO_EXPIRED';
 

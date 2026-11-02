@@ -17,6 +17,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_IN_PROGRESS: 'A payment for this order is in progress. Please wait a moment and try again.',
   PAYMENT_REFUNDED: 'The order changed while you were paying, so the charge was refunded. Please review the order and pay again.',
   REFUND_FAILED: 'The order changed while you were paying. The refund of that charge is pending; you will not lose the money.',
+  PROCESSING_FAILED: 'We could not restart processing. Please try again in a moment.',
   PROMO_NOT_FOUND: 'This promo code does not exist.',
   PROMO_EXPIRED: 'This promo code has expired.',
   UNAUTHENTICATED: 'Please sign in to continue.'

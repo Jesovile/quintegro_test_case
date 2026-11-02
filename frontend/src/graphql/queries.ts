@@ -28,6 +28,7 @@ export const ORDER_FIELDS = gql`
     }
     deliverySaved
     promoActive
+    processingFailed
   }
 `;
 

@@ -3,8 +3,10 @@ import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
 import { CheckoutService } from './services/checkoutService';
 import { PaymentService } from './services/paymentService';
+import { ProcessingService } from './services/processingService';
 import { MockGeoService } from './integrations/mock/mockGeoService';
 import { MockBankGateway } from './integrations/mock/mockBankGateway';
+import { MockFulfillmentService } from './integrations/mock/mockFulfillmentService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
 
 // The only place where repositories and services are wired together
@@ -18,6 +20,7 @@ export const createContainer = () => {
   // Integration implementations: replace the mocks here with real services
   const geoService = new MockGeoService();
   const bankGateway = new MockBankGateway();
+  const fulfillmentService = new MockFulfillmentService(geoService);
 
   const orderService = new OrderService(orderRepository, productRepository);
   const promoService = new PromoService(promoRepository);
@@ -29,6 +32,7 @@ export const createContainer = () => {
     orderService,
     checkoutService: new CheckoutService(orderRepository, orderService, geoService, promoService, paymentService),
     paymentService,
+    processingService: new ProcessingService(orderRepository, orderService, fulfillmentService),
     promoService
   };
 };

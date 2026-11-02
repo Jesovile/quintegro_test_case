@@ -98,6 +98,8 @@ export class App {
   }
 
   public listen(port: number): void {
+    // Paid orders are processed in the background, independent of any open browser tab
+    this.container.processingService.startWorker();
     this.app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
       console.log(`📚 API Documentation available at http://localhost:${port}/api-docs`);

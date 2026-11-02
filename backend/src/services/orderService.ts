@@ -147,7 +147,8 @@ export class OrderService {
       // An expired promo stays on the order so the user sees it, but no longer discounts the total
       promoActive,
       totals: calculateOrderTotals(orderProducts, promoActive && order.promo ? order.promo.discount : 0),
-      deliverySaved: Boolean(order.contact && order.addressRef)
+      deliverySaved: Boolean(order.contact && order.addressRef),
+      processingFailed: order.status === 'processing' && Boolean(order.fulfillment?.failed)
     };
   }
 }

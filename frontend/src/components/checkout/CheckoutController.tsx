@@ -1,18 +1,21 @@
 import React from 'react'
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@apollo/client'
-import { GET_CHECKOUT_ORDER } from '@/graphql/queries'
+import { GET_CHECKOUT_ORDER, GET_ORDER } from '@/graphql/queries'
 import { EXIT_CHECKOUT } from '@/graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views'
 import { checkoutPath, resolveStep } from '@/lib/checkoutSteps'
 import { getErrorCode, getErrorMessage } from '@/lib/graphqlErrors'
-import { CheckoutStep, Order } from '@/types/order'
+import { Order } from '@/types/order'
 import CheckoutStepper from './CheckoutStepper'
 import OrderSummary from './OrderSummary'
-import CheckoutStepPlaceholder from './CheckoutStepPlaceholder'
 import DeliveryStep from './DeliveryStep'
 import PaymentStep from './PaymentStep'
+import ProcessingStep from './ProcessingStep'
+import CheckoutSuccess from './CheckoutSuccess'
+
+const POLL_INTERVAL_MS = 2000
 
 const backToOrders = (
   <Button asChild variant="outline" className="mt-4">
@@ -20,21 +23,9 @@ const backToOrders = (
   </Button>
 )
 
-// Steps that are not built yet; Delivery and Payment are rendered by the controller with their callbacks
-const renderPlaceholderStep = (step: Exclude<CheckoutStep, 'delivery' | 'payment'>, order: Order) => {
-  switch (step) {
-    case 'processing':
-      return <CheckoutStepPlaceholder title="Processing" description={`Order #${order.orderId} is being processed.`} />
-    case 'success':
-      return (
-        <CheckoutStepPlaceholder title="Thank you!" description={`Order #${order.orderId} has been placed.`}>
-          <Button asChild className="mt-4">
-            <Link to="/">Continue shopping</Link>
-          </Button>
-        </CheckoutStepPlaceholder>
-      )
-  }
-}
+// The server moves a paid order on by itself; the page follows it until delivery or a failure that needs the user
+const isMovingOnServer = (order: Order | null | undefined): boolean =>
+  Boolean(order && (order.status === 'paid' || (order.status === 'processing' && !order.processingFailed)))
 
 // The only component that knows about checkout steps: it picks the step from the order state
 const CheckoutController: React.FC = () => {
@@ -42,6 +33,17 @@ const CheckoutController: React.FC = () => {
   const history = useHistory()
 
   const { data, loading, error, refetch } = useQuery(GET_CHECKOUT_ORDER, { variables: { orderId } })
+
+  // A light query without delivery: it refreshes the same cached order, so the step follows the server.
+  // A failed poll (the test backend fails every 5th request) is repeated on the next interval; hidden tabs do not poll.
+  useQuery(GET_ORDER, {
+    variables: { orderId },
+    skip: !isMovingOnServer(data?.order),
+    pollInterval: POLL_INTERVAL_MS,
+    skipPollAttempt: () => document.hidden,
+    fetchPolicy: 'network-only'
+  })
+
   const [exitCheckout, exitState] = useMutation(EXIT_CHECKOUT, {
     onCompleted: () => history.push('/order'),
     // Failures are shown from exitState.error. The order may have changed on the server
@@ -81,6 +83,31 @@ const CheckoutController: React.FC = () => {
     return <Redirect to={checkoutPath(order.orderId, currentStep)} />
   }
 
+  const renderStep = () => {
+    switch (currentStep) {
+      case 'delivery':
+        return deliveryLoadError && getErrorCode(deliveryLoadError) !== 'ADDRESS_NOT_FOUND' ? (
+          <ErrorState message={getErrorMessage(deliveryLoadError)} onRetry={() => refetch()} />
+        ) : (
+          <DeliveryStep
+            order={order}
+            delivery={order.delivery}
+            defaultFullName={data?.me?.name ?? ''}
+            notice={deliveryLoadError ? getErrorMessage(deliveryLoadError) : undefined}
+            onSaved={() => history.push(checkoutPath(order.orderId, 'payment'))}
+          />
+        )
+      case 'payment':
+        return <PaymentStep order={order} onPaid={() => history.push(checkoutPath(order.orderId, 'processing'))} />
+      case 'processing':
+        return <ProcessingStep order={order} />
+      case 'success':
+        return <CheckoutSuccess order={order} />
+      default:
+        return null
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -103,23 +130,7 @@ const CheckoutController: React.FC = () => {
       )}
       {currentStep && currentStep !== 'success' && <CheckoutStepper order={order} currentStep={currentStep} />}
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <section aria-labelledby="checkout-step-title">
-          {currentStep === 'delivery' && deliveryLoadError && getErrorCode(deliveryLoadError) !== 'ADDRESS_NOT_FOUND' ? (
-            <ErrorState message={getErrorMessage(deliveryLoadError)} onRetry={() => refetch()} />
-          ) : currentStep === 'delivery' ? (
-            <DeliveryStep
-              order={order}
-              delivery={order.delivery}
-              defaultFullName={data?.me?.name ?? ''}
-              notice={deliveryLoadError ? getErrorMessage(deliveryLoadError) : undefined}
-              onSaved={() => history.push(checkoutPath(order.orderId, 'payment'))}
-            />
-          ) : currentStep === 'payment' ? (
-            <PaymentStep order={order} onPaid={() => history.push(checkoutPath(order.orderId, 'processing'))} />
-          ) : (
-            currentStep && renderPlaceholderStep(currentStep, order)
-          )}
-        </section>
+        <section aria-labelledby="checkout-step-title">{renderStep()}</section>
         <OrderSummary order={order} />
       </div>
     </div>

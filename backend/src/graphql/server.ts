@@ -2,12 +2,12 @@ import { ApolloServer } from 'apollo-server-express';
 import { typeDefs } from './schema';
 import { createResolvers, GraphQLContext } from './resolvers';
 import { formatGraphQLError } from './errors';
-import { OrderService } from '../services/orderService';
-import { AuthService } from '../services/authService';
-import { PromoService } from '../services/promoService';
+import { Container } from '../container';
 
-export const createApolloServer = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
-  const resolvers = createResolvers(orderService, authService, promoService);
+export type GraphQLServices = Pick<Container, 'orderService' | 'checkoutService' | 'authService' | 'promoService'>;
+
+export const createApolloServer = (services: GraphQLServices) => {
+  const resolvers = createResolvers(services);
 
   return new ApolloServer({
     typeDefs,

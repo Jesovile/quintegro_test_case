@@ -3,6 +3,8 @@ import { ApolloError } from '@apollo/client'
 const ERROR_MESSAGES: Record<string, string> = {
   ORDER_NOT_FOUND: 'This order could not be found.',
   ORDER_NOT_EDITABLE: 'This order can no longer be changed.',
+  ORDER_EMPTY: 'Your order is empty.',
+  INVALID_STATUS_TRANSITION: 'This order has changed. Reload the page to see its current state.',
   UNAUTHENTICATED: 'Please sign in to continue.'
 }
 

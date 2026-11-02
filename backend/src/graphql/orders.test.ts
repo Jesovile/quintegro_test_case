@@ -18,7 +18,7 @@ describe('orders over GraphQL', () => {
 
   beforeEach(async () => {
     container = createContainer();
-    server = createApolloServer(container.orderService, container.authService, container.promoService);
+    server = createApolloServer(container);
     johnToken = (await container.authService.authenticateUser('john.doe', 'password123')) as string;
     janeToken = (await container.authService.authenticateUser('jane.smith', 'password456')) as string;
   });

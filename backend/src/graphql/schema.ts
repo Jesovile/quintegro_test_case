@@ -67,5 +67,7 @@ export const typeDefs = gql`
     login(input: LoginInput!): LoginResponse!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order!
     updateProductAmount(orderId: ID!, productId: ID!, amount: Int!): Order!
+    startCheckout(orderId: ID!): Order!
+    exitCheckout(orderId: ID!): Order!
   }
 `;

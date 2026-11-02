@@ -101,6 +101,68 @@ describe('App: REST and GraphQL share one store (Slice 1)', () => {
     expect(order.status).toBe('created');
   });
 
+  describe('checkout status over REST (AC-1.1, AC-1.6, AC-6.1, AC-6.4)', () => {
+    afterEach(async () => {
+      await fetch(`${base}/reset/orders`);
+    });
+
+    const mutate = async (query: string) => {
+      const response = await fetch(`${base}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ query })
+      });
+      return response.json() as Promise<{ data?: { startCheckout?: { status: string } }; errors?: unknown[] }>;
+    };
+    const START = `mutation { startCheckout(orderId: "order-2") { status } }`;
+    const EXIT = `mutation { exitCheckout(orderId: "order-2") { status } }`;
+
+    it('AC-1.1: a checkout started over GraphQL is visible as checkout over REST', async () => {
+      const started = await mutate(START);
+      expect(started.data?.startCheckout?.status).toBe('checkout');
+
+      const order = (await (await rest('/api/order/order-2')).json()) as { status: string };
+      expect(order.status).toBe('checkout');
+      const list = (await (await rest('/api/order')).json()) as Array<{ orderId: string; status: string }>;
+      expect(list.find(o => o.orderId === 'order-2')?.status).toBe('checkout');
+    });
+
+    it('AC-6.1: REST DELETE is refused with 409 in checkout and the order is unchanged', async () => {
+      await mutate(START);
+
+      const response = await rest('/api/order/order-2/product-1', 'DELETE');
+
+      expect(response.status).toBe(409);
+      const order = (await (await rest('/api/order/order-2')).json()) as { status: string; products: unknown[] };
+      expect(order.status).toBe('checkout');
+      expect(order.products).toHaveLength(40);
+    });
+
+    it('AC-1.6: after exitCheckout REST deletion works again', async () => {
+      await mutate(START);
+      await mutate(EXIT);
+
+      const response = await rest('/api/order/order-2/product-1', 'DELETE');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('AC-6.4: requests without a token are refused', async () => {
+      const unauthenticated = await fetch(`${base}/api/order/order-2`);
+      // The spec requires a refusal without data, not a specific status code
+      expect([401, 403]).toContain(unauthenticated.status);
+      expect(await unauthenticated.text()).not.toContain('order-2');
+
+      const gqlResponse = await fetch(`${base}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: START })
+      });
+      const body = (await gqlResponse.json()) as { errors?: Array<{ extensions?: { code?: string } }> };
+      expect(body.errors?.[0].extensions?.code).toBe('UNAUTHENTICATED');
+    });
+  });
+
   describe('REST DELETE product (AC-6.1, AC-6.2)', () => {
     afterEach(async () => {
       await fetch(`${base}/reset/orders`);

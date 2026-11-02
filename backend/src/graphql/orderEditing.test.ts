@@ -17,7 +17,7 @@ describe('editing order composition', () => {
 
   beforeEach(async () => {
     container = createContainer();
-    server = createApolloServer(container.orderService, container.authService, container.promoService);
+    server = createApolloServer(container);
     const token = await container.authService.authenticateUser('john.doe', 'password123');
     context = { req: { headers: { authorization: `Bearer ${token}` } } as unknown as Request };
   });

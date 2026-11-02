@@ -1,4 +1,7 @@
-import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
+import { UserRecord, AuthRecord, OrderRecord, OrderStatus, ProductRecord, PromoEntity } from '../types/entities';
+
+// Fields a status transition may change; owner, id and composition are never part of it
+export type OrderTransitionPatch = Pick<OrderRecord, 'status'>;
 
 export interface IUserRepository {
   findById(id: string): UserRecord | undefined;
@@ -16,6 +19,8 @@ export interface IOrderRepository {
   findByUserId(userId: string): OrderRecord[];
   findAll(): OrderRecord[];
   update(order: OrderRecord): void;
+  // Applies the patch only while the order is in one of the expected statuses, in one synchronous step
+  transition(orderId: string, from: OrderStatus[], patch: OrderTransitionPatch): OrderRecord | null;
 }
 
 export interface IProductRepository {

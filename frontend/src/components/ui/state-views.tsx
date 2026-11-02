@@ -32,13 +32,15 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => (
 interface EmptyStateProps {
   title: string
   description: string
+  action?: React.ReactNode
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ title, description }) => (
+export const EmptyState: React.FC<EmptyStateProps> = ({ title, description, action }) => (
   <div className="text-center py-12">
     <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
       <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
       <p className="mt-2 text-gray-600">{description}</p>
+      {action}
     </div>
   </div>
 )

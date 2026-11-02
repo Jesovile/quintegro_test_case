@@ -33,3 +33,5 @@ export interface Order {
   promo: Promo | null
   totals: OrderTotals
 }
+
+export type CheckoutStep = 'delivery' | 'payment' | 'processing' | 'success'

@@ -52,7 +52,7 @@ describe('AC-6.3 totals are computed from the server order', () => {
 
   it('exposes only integer money fields in GraphQL totals for every order', async () => {
     const container = createContainer();
-    const server = createApolloServer(container.orderService, container.authService, container.promoService);
+    const server = createApolloServer(container);
     const token = (await container.authService.authenticateUser('john.doe', 'password123')) as string;
 
     const result = await server.executeOperation(
@@ -67,7 +67,7 @@ describe('AC-6.3 totals are computed from the server order', () => {
 
   it('GraphQL schema has integer prices and totals and no client-priced inputs', async () => {
     const container = createContainer();
-    const server = createApolloServer(container.orderService, container.authService, container.promoService);
+    const server = createApolloServer(container);
     const token = (await container.authService.authenticateUser('john.doe', 'password123')) as string;
 
     const result = await server.executeOperation(
@@ -85,7 +85,7 @@ describe('AC-6.3 totals are computed from the server order', () => {
 describe('statuses', () => {
   it('GraphQL OrderStatus enum has exactly the six new statuses', async () => {
     const container = createContainer();
-    const server = createApolloServer(container.orderService, container.authService, container.promoService);
+    const server = createApolloServer(container);
     const token = (await container.authService.authenticateUser('john.doe', 'password123')) as string;
 
     const result = await server.executeOperation(
@@ -140,7 +140,7 @@ describe('extensions.code mapping', () => {
 
   it('login with wrong credentials gives UNAUTHENTICATED; unknown/expired promos give their codes', async () => {
     const container = createContainer();
-    const server = createApolloServer(container.orderService, container.authService, container.promoService);
+    const server = createApolloServer(container);
     const ctx = { req: { headers: {} } as unknown as Request };
 
     const login = await server.executeOperation(
@@ -157,7 +157,7 @@ describe('extensions.code mapping', () => {
 
   it('an invalid token gives UNAUTHENTICATED', async () => {
     const container = createContainer();
-    const server = createApolloServer(container.orderService, container.authService, container.promoService);
+    const server = createApolloServer(container);
 
     const result = await server.executeOperation(
       { query: `query { orders { orderId } }` }, requestWith('garbage'));

@@ -1,5 +1,5 @@
-import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
-import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
+import { UserRecord, AuthRecord, OrderRecord, OrderStatus, ProductRecord, PromoEntity } from '../types/entities';
+import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository, OrderTransitionPatch } from './interfaces';
 
 const PRODUCT_COUNT = 40;
 const CURRENT_ORDER_PRICES = [1300, 900, 200, 600];
@@ -165,6 +165,16 @@ export class InMemoryOrderRepository implements IOrderRepository {
     if (index !== -1) {
       this.orders[index] = order;
     }
+  }
+
+  transition(orderId: string, from: OrderStatus[], patch: OrderTransitionPatch): OrderRecord | null {
+    const index = this.orders.findIndex(o => o.orderId === orderId);
+    if (index === -1 || !from.includes(this.orders[index].status)) {
+      return null;
+    }
+
+    this.orders[index] = { ...this.orders[index], ...patch };
+    return this.orders[index];
   }
 }
 

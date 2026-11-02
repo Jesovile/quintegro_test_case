@@ -52,7 +52,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         {...props}
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : children}
+        {loading && !asChild ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            {/* Keeps the accessible name while the label is replaced by the spinner */}
+            <span className="sr-only">{children}</span>
+          </>
+        ) : (
+          children
+        )}
       </Comp>
     )
   }

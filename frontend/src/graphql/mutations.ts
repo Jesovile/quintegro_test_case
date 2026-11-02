@@ -24,6 +24,26 @@ export const UPDATE_PRODUCT_AMOUNT: TypedDocumentNode<
   }
 `;
 
+// Mutation to freeze the order and enter checkout
+export const START_CHECKOUT: TypedDocumentNode<{ startCheckout: Order }, { orderId: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation StartCheckout($orderId: ID!) {
+    startCheckout(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+`;
+
+// Mutation to leave checkout and make the order editable again
+export const EXIT_CHECKOUT: TypedDocumentNode<{ exitCheckout: Order }, { orderId: string }> = gql`
+  ${ORDER_FIELDS}
+  mutation ExitCheckout($orderId: ID!) {
+    exitCheckout(orderId: $orderId) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Mutation to delete a product from an order
 export const DELETE_PRODUCT_FROM_ORDER: TypedDocumentNode<
   { deleteProductFromOrder: Order },

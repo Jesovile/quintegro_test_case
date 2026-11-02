@@ -1,21 +1,26 @@
 import React, { useState } from 'react'
-import { useHistory } from 'react-router-dom'
-import { useMutation } from '@apollo/client'
+import { useHistory, useLocation } from 'react-router-dom'
+import { useApolloClient, useMutation } from '@apollo/client'
 import { LOGIN } from '../graphql/mutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { safeRedirectPath, setToken } from '@/lib/auth'
 
 const LoginPage: React.FC = () => {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const history = useHistory()
+  const location = useLocation()
+  const client = useApolloClient()
 
   const [loginMutation, { loading: isLoading }] = useMutation(LOGIN, {
-    onCompleted: (data) => {
-      localStorage.setItem('auth_token', data.login.token)
-      history.push('/')
+    onCompleted: async (data) => {
+      setToken(data.login.token)
+      // Drop responses cached for a previous or rejected session
+      await client.clearStore()
+      history.push(safeRedirectPath(new URLSearchParams(location.search).get('redirect')))
     },
     onError: (error) => {
       setError(error.message || 'An error occurred. Please try again.')

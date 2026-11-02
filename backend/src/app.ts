@@ -83,10 +83,8 @@ export class App {
   }
 
   private async initializeGraphQL(): Promise<void> {
-    const { authService, orderService, promoService } = this.container;
-
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(this.container);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

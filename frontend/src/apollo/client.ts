@@ -1,13 +1,14 @@
 import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
+import { clearToken, getToken, notifyUnauthenticated } from '@/lib/auth';
 
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:3000/graphql',
 });
 
 const authLink = setContext((_, { headers }) => {
-  const token = localStorage.getItem('auth_token');
+  const token = getToken();
   
   return {
     headers: {
@@ -17,7 +18,14 @@ const authLink = setContext((_, { headers }) => {
   }
 });
 
-const errorLink = onError(({ graphQLErrors, networkError }) => {
+const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+  // An expired or invalid session; a failed login attempt is handled by the login form itself
+  const sessionRejected = graphQLErrors?.some(({ extensions }) => extensions?.code === 'UNAUTHENTICATED');
+  if (sessionRejected && operation.operationName !== 'Login') {
+    clearToken();
+    notifyUnauthenticated();
+  }
+
   if (graphQLErrors)
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.log(

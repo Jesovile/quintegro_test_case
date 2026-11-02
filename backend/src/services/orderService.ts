@@ -11,7 +11,7 @@ export class OrderService {
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
     const orders = this.orderRepository.findByUserId(userId);
-    return orders.map(order => this.transformToDTO(order));
+    return orders.map(order => this.toDTO(order));
   }
 
   async getOrderById(orderId: string, userId: string): Promise<OrderDTO | null> {
@@ -25,7 +25,7 @@ export class OrderService {
       return null;
     }
 
-    return this.transformToDTO(order);
+    return this.toDTO(order);
   }
 
   async deleteProductFromOrder(orderId: string, productId: string, userId: string): Promise<OrderDTO | null> {
@@ -54,7 +54,7 @@ export class OrderService {
     this.updateOrder(updatedOrder);
 
     // Transform to DTO and return
-    return this.transformToDTO(updatedOrder);
+    return this.toDTO(updatedOrder);
   }
 
   async updateProductAmount(orderId: string, productId: string, newAmount: number, userId: string): Promise<OrderDTO | null> {
@@ -87,7 +87,7 @@ export class OrderService {
     this.updateOrder(updatedOrder);
 
     // Transform to DTO and return
-    return this.transformToDTO(updatedOrder);
+    return this.toDTO(updatedOrder);
   }
 
   private assertEditable(order: OrderRecord): void {
@@ -102,7 +102,7 @@ export class OrderService {
     this.orderRepository.update(updatedOrder);
   }
 
-  private transformToDTO(order: OrderRecord): OrderDTO {
+  toDTO(order: OrderRecord): OrderDTO {
     const products = order.products.map(item => {
       // A product removed from the catalog must not break the order: its position still counts in totals
       const product = this.productRepository.findById(item.id) ?? {

@@ -18,21 +18,21 @@ manual check -> demo to the stakeholder.
 - Checkpoint to demo: `/order` показывает целые цены (`$1,300`) и итог с сервера; статусы новые; данные REST и GraphQL совпадают.
 
 ## Slice 2 — Сохранение состава заказа
-- [ ] Data / status model changes: нет
-- [ ] Service + validation (domain layer): `updateProductAmount` и удаление разрешены только в `created`, код `ORDER_NOT_EDITABLE`; удаление последней позиции оставляет пустой заказ; отсутствующий товар не ломает список
-- [ ] API (resolver/route): `updateProductAmount`, `deleteProductFromOrder: Order!`
-- [ ] UI: `OrderList` читает кэш Apollo, изменения идут на сервер; `state-views.tsx` заменяет повторы состояний; проп `loading` у `Button`
-- [ ] Tests (test-writer): AC-6.1, AC-6.2
-- [ ] Review + fixes
+- [x] Data / status model changes: нет
+- [x] Service + validation (domain layer): `updateProductAmount` и удаление разрешены только в `created`, код `ORDER_NOT_EDITABLE`; удаление последней позиции оставляет пустой заказ; отсутствующий товар не ломает список
+- [x] API (resolver/route): `updateProductAmount`, `deleteProductFromOrder: Order!`
+- [x] UI: `OrderList` читает кэш Apollo, изменения идут на сервер; `state-views.tsx` заменяет повторы состояний; проп `loading` у `Button`
+- [x] Tests (test-writer): AC-6.1, AC-6.2
+- [x] Review + fixes
 - Checkpoint to demo: после перезагрузки `/order` количество и удалённые позиции сохраняются, заказ `deliver` изменить нельзя.
 
 ## Slice 3 — Вход в чекаут и каркас мастера
-- [ ] Data / status model changes: `orderStateMachine.ts`, `IOrderRepository.transition`
-- [ ] Service + validation (domain layer): `checkoutService`: `startCheckout`, `exitCheckout`, `ORDER_EMPTY`, проверка владельца
-- [ ] API (resolver/route): `startCheckout`, `exitCheckout`
-- [ ] UI: кнопка "Checkout" / "Continue checkout", `RequireAuth`, `/checkout/:orderId/:step?`, `CheckoutController`, `CheckoutStepper`, `OrderSummary`, заглушки шагов
-- [ ] Tests (test-writer): AC-1.1, AC-1.2, AC-1.3, AC-1.6, AC-6.4, AC-7.1
-- [ ] Review + fixes
+- [x] Data / status model changes: `orderStateMachine.ts`, `IOrderRepository.transition`
+- [x] Service + validation (domain layer): `checkoutService`: `startCheckout`, `exitCheckout`, `ORDER_EMPTY`, проверка владельца
+- [x] API (resolver/route): `startCheckout`, `exitCheckout`
+- [x] UI: кнопка "Checkout" / "Continue checkout", `RequireAuth`, `/checkout/:orderId/:step?`, `CheckoutController`, `CheckoutStepper`, `OrderSummary`, заглушки шагов
+- [x] Tests (test-writer): AC-1.1, AC-1.2, AC-1.3, AC-1.6, AC-6.4, AC-7.1
+- [x] Review + fixes
 - Checkpoint to demo: запуск чекаута, заказ заморожен, мастер показывает шаги и сводку, выход возвращает заказ в `created`.
 
 ## Slice 4 — Шаг Доставка и Гео-мок
@@ -115,3 +115,16 @@ manual check -> demo to the stakeholder.
   - Запрос `promo` без авторизации, вход без лимита попыток: нужен rate limit.
   - В логах ошибок нет сообщения и стека: нужен структурированный логгер.
   - Интроспекция GraphQL в production, `/graphql` недоступен в первые миллисекунды, неверный комментарий в `errorTestMiddleware`: мелочи.
+- Находки ревью Slice 2, по решению отложены (срез закоммичен вместе со Slice 1 в `5e99064`):
+  - Заказ, изменённый в другой вкладке, остаётся редактируемым в UI до перезагрузки: перечитывать заказы при `ORDER_NOT_EDITABLE` (расходится с AC-6.1).
+  - Быстрая правка двух позиций: старый ответ может затереть кэш; блокировать весь заказ на время мутации.
+  - Клик по корзине сразу после ввода количества не срабатывает с первого раза.
+  - Ошибка удаления остаётся на экране после успешной правки количества.
+  - `disabled` на время запроса сбрасывает фокус клавиатуры.
+  - Количество вне 1..10 молча приводится к диапазону; правка отсутствующего `productId` отвечает успехом.
+  - REST 409 без `code`, маппинг ошибки в контроллере.
+  - Подсказки "Did you mean" в ошибках валидации GraphQL.
+- Находки ревью Slice 3, по решению отложены:
+  - UI-часть AC-1.3, AC-6.4, AC-7.1 не покрыта автотестами: нужна testing-library; проверено вручную в браузере.
+  - Ключ токена `auth_token` используется напрямую в `UserProfile.tsx` мимо `lib/auth.ts`.
+  - Без токена REST отвечает 403, а не 401.

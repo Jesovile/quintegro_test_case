@@ -3,6 +3,7 @@ import { useQuery } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
+import CheckoutAction from './CheckoutAction'
 import PreviouslyOrdered from './PreviouslyOrdered'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views'
 import { getErrorMessage } from '@/lib/graphqlErrors'
@@ -95,6 +96,7 @@ const OrderList: React.FC = () => {
                 <p className="text-center py-6 text-gray-600">This order is empty.</p>
               )}
               <OrderSum totals={order.totals} />
+              <CheckoutAction order={order} />
             </div>
           ))
         )}

@@ -101,7 +101,18 @@ const CheckoutPage: React.FC = () => {
         },
       })
 
-      await submitOrder({ variables: { orderId: order.orderId } })
+      await submitOrder({
+        variables: {
+          orderId: order.orderId,
+          deliveryInfo: {
+            recipientName: values.recipientName,
+            phone: values.phone,
+            city: values.city,
+            addressLine1: values.addressLine1,
+            postalCode: values.postalCode || null,
+          },
+        },
+      })
       history.replace(`/orders/${order.orderId}/confirmation`)
     } catch {
       setSubmitError('Не удалось обработать платёж. Попробуйте ещё раз.')
@@ -135,6 +146,16 @@ const CheckoutPage: React.FC = () => {
   )
 }
 
-const Field: React.FC<{ label: string; error?: string; className?: string; children: React.ReactNode }> = ({ label, error, className, children }) => <label className={`grid gap-1 text-sm font-medium text-gray-700 ${className ?? ''}`}><span>{label}</span>{children}{error && <span role="alert" className="text-sm font-normal text-red-600">{error}</span>}</label>
+const Field: React.FC<{ label: string; error?: string; className?: string; children: React.ReactNode }> = ({ label, error, className, children }) => (
+  <label className={`grid self-start content-start gap-1 text-sm font-medium text-gray-700 ${className ?? ''}`}>
+    <span>{label}</span>
+    {children}
+    {error ? (
+      <span role="alert" className="min-h-[1.25rem] text-sm font-normal leading-5 text-red-600">{error}</span>
+    ) : (
+      <span aria-hidden="true" className="min-h-[1.25rem] leading-5">&nbsp;</span>
+    )}
+  </label>
+)
 
 export default CheckoutPage

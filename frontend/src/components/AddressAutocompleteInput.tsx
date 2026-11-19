@@ -26,6 +26,7 @@ const HighlightedSuggestion: React.FC<{ label: string; query: string }> = ({ lab
 
 export const AddressAutocompleteInput: React.FC<Props> = ({ value, onChange, onSelect, id }) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(false)
   const selectedValue = useRef(value)
@@ -33,6 +34,7 @@ export const AddressAutocompleteInput: React.FC<Props> = ({ value, onChange, onS
   useEffect(() => {
     if (value.trim().length < 3 || selectedValue.current === value) {
       setSuggestions([])
+      setActiveIndex(-1)
       setIsLoading(false)
       return
     }
@@ -43,9 +45,11 @@ export const AddressAutocompleteInput: React.FC<Props> = ({ value, onChange, onS
       setError(false)
       try {
         setSuggestions(await addressAutocompleteProvider.suggest(value, { signal: controller.signal }))
+        setActiveIndex(-1)
       } catch (requestError) {
         if ((requestError as Error).name !== 'AbortError') {
           setSuggestions([])
+          setActiveIndex(-1)
           setError(true)
         }
       } finally {
@@ -63,6 +67,27 @@ export const AddressAutocompleteInput: React.FC<Props> = ({ value, onChange, onS
     selectedValue.current = suggestion.addressLine1 ?? suggestion.label
     onSelect(suggestion)
     setSuggestions([])
+    setActiveIndex(-1)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      setSuggestions([])
+      setActiveIndex(-1)
+      return
+    }
+    if (!suggestions.length) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIndex(index => (index + 1) % suggestions.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIndex(index => (index <= 0 ? suggestions.length - 1 : index - 1))
+    } else if (event.key === 'Enter' && activeIndex >= 0) {
+      event.preventDefault()
+      select(suggestions[activeIndex])
+    }
   }
 
   return <div className="relative">
@@ -73,17 +98,22 @@ export const AddressAutocompleteInput: React.FC<Props> = ({ value, onChange, onS
         selectedValue.current = ''
         onChange(event.target.value)
       }}
-      onBlur={() => window.setTimeout(() => setSuggestions([]), 150)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => window.setTimeout(() => {
+        setSuggestions([])
+        setActiveIndex(-1)
+      }, 150)}
       autoComplete="street-address"
       role="combobox"
       aria-autocomplete="list"
       aria-expanded={suggestions.length > 0}
       aria-controls={id ? `${id}-suggestions` : undefined}
+      aria-activedescendant={activeIndex >= 0 && id ? `${id}-option-${activeIndex}` : undefined}
     />
     {isLoading && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" aria-label="Ищем адреса" />}
     {suggestions.length > 0 && <ul id={id ? `${id}-suggestions` : undefined} role="listbox" className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-      {suggestions.map(suggestion => <li key={suggestion.id} role="option" aria-selected="false">
-        <button type="button" className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onMouseDown={event => event.preventDefault()} onClick={() => select(suggestion)}><HighlightedSuggestion label={suggestion.label} query={value} /></button>
+      {suggestions.map((suggestion, index) => <li key={suggestion.id} id={id ? `${id}-option-${index}` : undefined} role="option" aria-selected={activeIndex === index}>
+        <button type="button" className={`w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 ${activeIndex === index ? 'bg-blue-50' : ''}`} onMouseEnter={() => setActiveIndex(index)} onMouseDown={event => event.preventDefault()} onClick={() => select(suggestion)}><HighlightedSuggestion label={suggestion.label} query={value} /></button>
       </li>)}
     </ul>}
     {error && <p className="mt-1 text-sm font-normal text-amber-700">Подсказки адресов временно недоступны.</p>}

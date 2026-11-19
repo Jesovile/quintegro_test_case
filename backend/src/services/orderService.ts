@@ -1,4 +1,4 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
+import { DeliveryInfo, OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
 
 export class OrderService {
@@ -116,7 +116,7 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
+  async submitOrder(orderId: string, userId: string, deliveryInfo: DeliveryInfo): Promise<boolean> {
     const order = this.orderRepository.findById(orderId);
     
     if (!order) {
@@ -132,15 +132,54 @@ export class OrderService {
       return false;
     }
 
+    if (!this.isValidDeliveryInfo(deliveryInfo)) {
+      return false;
+    }
+
     // Update order status to 'submited'
     const updatedOrder: OrderRecord = {
       ...order,
-      status: 'submited'
+      status: 'submited',
+      deliveryInfo: this.normalizeDeliveryInfo(deliveryInfo)
     };
 
     // Update the in-memory repository
     this.updateOrder(updatedOrder);
     return true;
+  }
+
+  async updateDeliveryInfo(orderId: string, userId: string, deliveryInfo: DeliveryInfo): Promise<OrderDTO | null> {
+    const order = this.orderRepository.findById(orderId);
+    if (!order || order.userId !== userId || order.status !== 'submited' || !this.isValidDeliveryInfo(deliveryInfo)) {
+      return null;
+    }
+
+    const updatedOrder: OrderRecord = {
+      ...order,
+      deliveryInfo: this.normalizeDeliveryInfo(deliveryInfo)
+    };
+    this.updateOrder(updatedOrder);
+    return this.transformToDTO(updatedOrder);
+  }
+
+  private normalizeDeliveryInfo(deliveryInfo: DeliveryInfo): DeliveryInfo {
+    return {
+      recipientName: deliveryInfo.recipientName.trim(),
+      phone: deliveryInfo.phone.trim(),
+      city: deliveryInfo.city.trim(),
+      addressLine1: deliveryInfo.addressLine1.trim(),
+      postalCode: deliveryInfo.postalCode?.trim() || undefined
+    };
+  }
+
+  private isValidDeliveryInfo(deliveryInfo: DeliveryInfo): boolean {
+    return Boolean(
+      deliveryInfo &&
+      deliveryInfo.recipientName?.trim() &&
+      deliveryInfo.phone?.trim() &&
+      deliveryInfo.city?.trim() &&
+      deliveryInfo.addressLine1?.trim()
+    );
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
@@ -183,7 +222,9 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      promo: order.promo,
+      deliveryInfo: order.deliveryInfo
     };
   }
 }

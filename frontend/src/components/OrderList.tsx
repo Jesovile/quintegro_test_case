@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { useHistory } from 'react-router-dom'
 import { GET_ORDERS } from '../graphql/queries'
-import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER, UPDATE_DELIVERY_INFO } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
-import { Loader2 } from 'lucide-react'
+import { DeliveryInfoEditor, type DeliveryInfo } from './DeliveryInfoEditor'
+import { Button } from './ui/button'
+import { Loader2, Pencil } from 'lucide-react'
 
 interface Product {
   id: string
@@ -24,10 +26,12 @@ interface Order {
   orderId: string
   status: 'created' | 'submited' | 'finished'
   products: OrderItem[]
+  deliveryInfo?: DeliveryInfo | null
 }
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const history = useHistory()
 
   const { loading, error } = useQuery(GET_ORDERS, {
@@ -55,6 +59,8 @@ const OrderList: React.FC = () => {
     }
   })
 
+  const [updateDeliveryInfo] = useMutation(UPDATE_DELIVERY_INFO)
+
   const handleAmountChange = (productId: string, newAmount: number) => {
     setOrders(prevOrders => 
       prevOrders.map(order => ({
@@ -78,6 +84,14 @@ const OrderList: React.FC = () => {
   }
 
   const handleCheckout = (orderId: string) => history.push(`/checkout/${orderId}`)
+
+  const handleDeliverySave = async (deliveryInfo: DeliveryInfo) => {
+    if (!editingOrder) return
+    const { data } = await updateDeliveryInfo({
+      variables: { orderId: editingOrder.orderId, deliveryInfo },
+    })
+    setOrders(previous => previous.map(order => order.orderId === data.updateDeliveryInfo.orderId ? data.updateDeliveryInfo : order))
+  }
 
   if (loading) {
     return (
@@ -140,9 +154,17 @@ const OrderList: React.FC = () => {
           const displayStatus = order.status === 'submited' ? 'Заказ принят' : order.status === 'finished' ? 'Завершён' : 'Ожидает оформления'
 
           return <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
-            Order #{order.orderId} - <span className={isFinalized ? 'text-green-600' : ''}>{displayStatus}</span>
-          </h2>
+          <div className="mb-6 flex items-start justify-between gap-4 border-b border-gray-200 pb-3">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Order #{order.orderId} - <span className={isFinalized ? 'text-green-600' : ''}>{displayStatus}</span>
+            </h2>
+            {isAccepted && <Button variant="ghost" size="icon" aria-label="Редактировать доставку" title="Редактировать доставку" onClick={() => setEditingOrder(order)}><Pencil className="h-4 w-4" /></Button>}
+          </div>
+
+          {isFinalized && <div className="mb-6 rounded-lg bg-slate-50 p-4 text-sm text-gray-700">
+            <p className="font-medium text-gray-900">Доставка</p>
+            {order.deliveryInfo ? <div className="mt-2 grid gap-1 sm:grid-cols-2"><p>{order.deliveryInfo.recipientName}</p><p>{order.deliveryInfo.phone}</p><p className="sm:col-span-2">{order.deliveryInfo.city}, {order.deliveryInfo.addressLine1}{order.deliveryInfo.postalCode ? `, ${order.deliveryInfo.postalCode}` : ''}</p></div> : <p className="mt-2 text-gray-500">Данные доставки не указаны.</p>}
+          </div>}
           
           {order.products.map((item, index) => (
             <OrderListItem
@@ -164,6 +186,7 @@ const OrderList: React.FC = () => {
         }
         )()
       ))}
+      {editingOrder && <DeliveryInfoEditor initialValue={editingOrder.deliveryInfo} onClose={() => setEditingOrder(null)} onSave={handleDeliverySave} />}
     </div>
   )
 }

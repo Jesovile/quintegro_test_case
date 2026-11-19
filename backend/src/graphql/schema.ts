@@ -20,11 +20,28 @@ export const typeDefs = gql`
     dueDate: Float!
   }
 
+  type DeliveryInfo {
+    recipientName: String!
+    phone: String!
+    city: String!
+    addressLine1: String!
+    postalCode: String
+  }
+
+  input DeliveryInfoInput {
+    recipientName: String!
+    phone: String!
+    city: String!
+    addressLine1: String!
+    postalCode: String
+  }
+
   type Order {
     orderId: ID!
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    deliveryInfo: DeliveryInfo
   }
 
   enum OrderStatus {
@@ -57,7 +74,8 @@ export const typeDefs = gql`
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
+    submitOrder(orderId: ID!, deliveryInfo: DeliveryInfoInput!): Boolean!
+    updateDeliveryInfo(orderId: ID!, deliveryInfo: DeliveryInfoInput!): Order!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
   }
 `;

@@ -98,20 +98,37 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
+      submitOrder: async (parent: any, { orderId, deliveryInfo }: { orderId: string, deliveryInfo: any }, context: any) => {
         const userId = extractUserIdFromToken(context);
         if (!userId) {
           throw new Error('Authentication required');
         }
 
         try {
-          const success = await orderService.submitOrder(orderId, userId);
+          const success = await orderService.submitOrder(orderId, userId, deliveryInfo);
           if (!success) {
             throw new Error('Order not found or access denied');
           }
           return success;
         } catch (error) {
           throw new Error('Failed to submit order');
+        }
+      },
+
+      updateDeliveryInfo: async (parent: any, { orderId, deliveryInfo }: { orderId: string, deliveryInfo: any }, context: any) => {
+        const userId = extractUserIdFromToken(context);
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+
+        try {
+          const updatedOrder = await orderService.updateDeliveryInfo(orderId, userId, deliveryInfo);
+          if (!updatedOrder) {
+            throw new Error('Order not found, access denied, or cannot be edited');
+          }
+          return updatedOrder;
+        } catch (error) {
+          throw new Error('Failed to update delivery information');
         }
       },
 

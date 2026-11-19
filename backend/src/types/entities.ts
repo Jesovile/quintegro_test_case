@@ -25,6 +25,14 @@ export interface ProductRecord {
   image: string;
 }
 
+export interface DeliveryInfo {
+  recipientName: string;
+  phone: string;
+  city: string;
+  addressLine1: string;
+  postalCode?: string;
+}
+
 export interface OrderRecord {
   orderId: string;
   userId: string;
@@ -36,6 +44,7 @@ export interface OrderRecord {
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryInfo?: DeliveryInfo;
 }
 
 export interface OrderDTO {
@@ -47,6 +56,7 @@ export interface OrderDTO {
     price: number;
   }>;
   promo?: PromoEntity;
+  deliveryInfo?: DeliveryInfo;
 }
 
 export interface PromoEntity {

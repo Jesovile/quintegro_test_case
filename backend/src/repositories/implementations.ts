@@ -95,6 +95,13 @@ export class InMemoryOrderRepository implements IOrderRepository {
       userId: "user-1",
       status: "finished",
       createAt: Date.now() - 86400000, // 1 day ago
+      deliveryInfo: {
+        recipientName: "Иван Иванов",
+        phone: "+7 999 123-45-67",
+        city: "Москва",
+        addressLine1: "ул. Тверская, 12, кв. 4",
+        postalCode: "125009"
+      },
       products: [
         { id: "product-1", amount: 1, price: 1299.99 },
         { id: "product-3", amount: 2, price: 199.99 }
@@ -119,6 +126,13 @@ export class InMemoryOrderRepository implements IOrderRepository {
         userId: "user-1",
         status: "finished",
         createAt: Date.now() - 86400000,
+        deliveryInfo: {
+          recipientName: "Иван Иванов",
+          phone: "+7 999 123-45-67",
+          city: "Москва",
+          addressLine1: "ул. Тверская, 12, кв. 4",
+          postalCode: "125009"
+        },
         products: [
           { id: "product-1", amount: 1, price: 1299.99 },
           { id: "product-3", amount: 2, price: 199.99 }

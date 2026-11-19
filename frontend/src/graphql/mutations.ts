@@ -11,8 +11,39 @@ export const LOGIN = gql`
 
 // Mutation to submit an order
 export const SUBMIT_ORDER = gql`
-  mutation SubmitOrder($orderId: ID!) {
-    submitOrder(orderId: $orderId)
+  mutation SubmitOrder($orderId: ID!, $deliveryInfo: DeliveryInfoInput!) {
+    submitOrder(orderId: $orderId, deliveryInfo: $deliveryInfo)
+  }
+`;
+
+export const UPDATE_DELIVERY_INFO = gql`
+  mutation UpdateDeliveryInfo($orderId: ID!, $deliveryInfo: DeliveryInfoInput!) {
+    updateDeliveryInfo(orderId: $orderId, deliveryInfo: $deliveryInfo) {
+      orderId
+      status
+      products {
+        product {
+          id
+          title
+          description
+          image
+        }
+        amount
+        price
+      }
+      promo {
+        id
+        discount
+        dueDate
+      }
+      deliveryInfo {
+        recipientName
+        phone
+        city
+        addressLine1
+        postalCode
+      }
+    }
   }
 `;
 

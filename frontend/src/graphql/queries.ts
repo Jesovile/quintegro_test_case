@@ -21,6 +21,13 @@ export const GET_ORDERS = gql`
         discount
         dueDate
       }
+      deliveryInfo {
+        recipientName
+        phone
+        city
+        addressLine1
+        postalCode
+      }
     }
   }
 `;
@@ -45,6 +52,13 @@ export const GET_ORDER = gql`
         id
         discount
         dueDate
+      }
+      deliveryInfo {
+        recipientName
+        phone
+        city
+        addressLine1
+        postalCode
       }
     }
   }

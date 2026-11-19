@@ -19,12 +19,13 @@ interface OrderListItemProps {
   orderId: string
   onAmountChange: (productId: string, newAmount: number) => void
   onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
+  onCheckout?: (orderId: string) => void
   status: string;
   isLast: boolean;
+  isEditable: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
+const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onCheckout, status, isLast, isEditable }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
@@ -91,7 +92,7 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
               <p className="text-lg font-bold text-blue-600">
                 ${price.toFixed(2)}
               </p>
-              <div className="flex items-center gap-2">
+              {isEditable && <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
@@ -126,18 +127,18 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </div>
+              </div>}
             </div>
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
+      {isEditable && isLast && status === 'created' && onCheckout && (
         <div className="mt-6 flex justify-end">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
+            onClick={() => onCheckout(orderId)}
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
-            Submit Order
+            Proceed to checkout
           </Button>
         </div>
       )}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
+import { useHistory } from 'react-router-dom'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
 import { Loader2 } from 'lucide-react'
@@ -27,22 +28,14 @@ interface Order {
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
+  const history = useHistory()
 
-  const { loading, error, refetch } = useQuery(GET_ORDERS, {
+  const { loading, error } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
       setOrders(data.orders || [])
     },
     onError: (error) => {
       console.error('GraphQL error:', error)
-    }
-  })
-
-  const [submitOrder] = useMutation(SUBMIT_ORDER, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Failed to submit order:', error)
     }
   })
 
@@ -84,15 +77,7 @@ const OrderList: React.FC = () => {
     )
   }
 
-  const handleSubmitOrder = async (orderId: string) => {
-    try {
-      await submitOrder({
-        variables: { orderId }
-      })
-    } catch (error) {
-      console.error('Error submitting order:', error)
-    }
-  }
+  const handleCheckout = (orderId: string) => history.push(`/checkout/${orderId}`)
 
   if (loading) {
     return (
@@ -149,9 +134,14 @@ const OrderList: React.FC = () => {
       </h1>
       
       {orders.map((order) => (
-        <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        (() => {
+          const isAccepted = order.status === 'submited'
+          const isFinalized = isAccepted || order.status === 'finished'
+          const displayStatus = order.status === 'submited' ? 'Заказ принят' : order.status === 'finished' ? 'Завершён' : 'Ожидает оформления'
+
+          return <div key={order.orderId} className="mb-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-6 text-gray-900 border-b border-gray-200 pb-3">
-            Order #{order.orderId} - {order.status}
+            Order #{order.orderId} - <span className={isFinalized ? 'text-green-600' : ''}>{displayStatus}</span>
           </h2>
           
           {order.products.map((item, index) => (
@@ -163,13 +153,16 @@ const OrderList: React.FC = () => {
               orderId={order.orderId}
               onAmountChange={handleAmountChange}
               onDelete={handleDelete}
-              onSubmitOrder={handleSubmitOrder}
+              onCheckout={handleCheckout}
               status={order.status}
               isLast={index === order.products.length -1}
+              isEditable={!isFinalized}
             />
           ))}
           <OrderSum orderId={order.orderId} products={order.products} />
         </div>
+        }
+        )()
       ))}
     </div>
   )

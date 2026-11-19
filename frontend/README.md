@@ -55,6 +55,15 @@ The development server runs on `http://localhost:3001` and includes:
 - **TypeScript** compilation and type checking
 - **ESLint** for code quality
 
+## Address autocomplete
+
+The checkout field depends only on `AddressAutocompleteProvider`, so a provider
+can be replaced without changing the page or form data model. It uses the open
+Photon service by default. Set `VITE_ADDRESS_AUTOCOMPLETE_PROVIDER=mock` to use
+the local deterministic provider, or set `VITE_PHOTON_BASE_URL` to a self-hosted
+Photon endpoint. Public Photon is useful for low-volume evaluation but does not
+provide an availability guarantee.
+
 ## Layout Structure
 
 - **MainLayout**: Provides the overall page structure

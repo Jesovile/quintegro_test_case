@@ -1,1 +1,5 @@
 VITE_GRAPHQL_URI=/graphql
+# Photon is enabled by default. Set to "mock" to keep address suggestions local,
+# or provide VITE_PHOTON_BASE_URL for a self-hosted Photon instance.
+VITE_ADDRESS_AUTOCOMPLETE_PROVIDER=photon
+# VITE_PHOTON_BASE_URL=https://photon.komoot.io

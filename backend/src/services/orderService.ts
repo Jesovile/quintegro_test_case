@@ -1,4 +1,5 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
+import { OrderRecord } from '../types/entities';
+import { OrderDTO, OrderItemDTO, ProductInputDTO } from '../types/dtos';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
 
 export class OrderService {
@@ -27,7 +28,7 @@ export class OrderService {
     return this.transformToDTO(order);
   }
 
-  calculateOrderSum(products: Array<{id: string, amount: number, price: number}>, promoId?: string): number {
+  calculateOrderSum(products: ProductInputDTO[], promoId?: string): number {
     const subtotal = products.reduce((total, product) => {
       return total + (product.amount * product.price);
     }, 0);
@@ -165,7 +166,7 @@ export class OrderService {
     });
 
     // Remove duplicates and sum amounts for same products
-    const uniqueProducts = new Map<string, { product: ProductRecord; amount: number; price: number }>();
+    const uniqueProducts = new Map<string, OrderItemDTO>();
     
     products.forEach(item => {
       const existing = uniqueProducts.get(item.product.id);

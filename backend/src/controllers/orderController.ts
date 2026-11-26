@@ -2,16 +2,7 @@ import { Request, Response } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 
-interface ProductItem {
-  id: string;
-  amount: number;
-  price: number;
-}
-
-interface OrderSumRequest {
-  products: ProductItem[];
-  promo?: string;
-}
+import { OrderSumRequestDTO } from '../types/dtos';
 
 export class OrderController {
   constructor(
@@ -82,7 +73,7 @@ export class OrderController {
       }
 
       const { orderId } = req.params;
-      const { products, promo } = req.body as OrderSumRequest;
+      const { products, promo } = req.body as OrderSumRequestDTO;
 
       if (!products || !Array.isArray(products)) {
         return res.status(400).json({ error: 'Products array is required' });

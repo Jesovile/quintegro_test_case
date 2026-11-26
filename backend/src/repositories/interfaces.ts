@@ -1,4 +1,4 @@
-import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
+import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity, CheckoutRecord } from '../types/entities';
 
 export interface IUserRepository {
   findById(id: string): UserRecord | undefined;
@@ -26,4 +26,10 @@ export interface IProductRepository {
 export interface IPromoRepository {
   findById(id: string): PromoEntity | undefined;
   findAll(): PromoEntity[];
+}
+
+export interface ICheckoutRepository {
+  findByOrderId(orderId: string): CheckoutRecord | undefined;
+  save(checkout: CheckoutRecord): void;
+  reset(): void;
 }

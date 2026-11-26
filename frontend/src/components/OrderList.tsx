@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
+import { useHistory } from 'react-router-dom'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_ORDERS } from '../graphql/queries'
-import { SUBMIT_ORDER, DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
+import { DELETE_PRODUCT_FROM_ORDER } from '../graphql/mutations'
 import OrderListItem from './OrderListItem'
 import OrderSum from './OrderSum'
 import { Loader2 } from 'lucide-react'
@@ -27,22 +28,14 @@ interface Order {
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
+  const history = useHistory()
 
-  const { loading, error, refetch } = useQuery(GET_ORDERS, {
+  const { loading, error } = useQuery(GET_ORDERS, {
     onCompleted: (data) => {
       setOrders(data.orders || [])
     },
     onError: (error) => {
       console.error('GraphQL error:', error)
-    }
-  })
-
-  const [submitOrder] = useMutation(SUBMIT_ORDER, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Failed to submit order:', error)
     }
   })
 
@@ -84,14 +77,11 @@ const OrderList: React.FC = () => {
     )
   }
 
-  const handleSubmitOrder = async (orderId: string) => {
-    try {
-      await submitOrder({
-        variables: { orderId }
-      })
-    } catch (error) {
-      console.error('Error submitting order:', error)
-    }
+  // Placing the order now happens on the checkout page. Quantities edited here
+  // are only kept locally, so they travel to checkout in the router state.
+  const handleCheckout = (orderId: string) => {
+    const order = orders.find(o => o.orderId === orderId)
+    history.push(`/checkout/${orderId}`, { products: order?.products })
   }
 
   if (loading) {
@@ -163,7 +153,7 @@ const OrderList: React.FC = () => {
               orderId={order.orderId}
               onAmountChange={handleAmountChange}
               onDelete={handleDelete}
-              onSubmitOrder={handleSubmitOrder}
+              onCheckout={handleCheckout}
               status={order.status}
               isLast={index === order.products.length -1}
             />

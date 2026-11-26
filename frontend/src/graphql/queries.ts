@@ -67,3 +67,49 @@ export const GET_PROMO = gql`
     }
   }
 `;
+
+// Query to search mock US shipping addresses (checkout address picker)
+export const SEARCH_ADDRESSES = gql`
+  query SearchAddresses($query: String!, $limit: Int) {
+    searchAddresses(query: $query, limit: $limit) {
+      id
+      line1
+      city
+      state
+      zip
+    }
+  }
+`;
+
+// Delivery options from our delivery partner + days that can be booked for a time slot
+export const GET_DELIVERY_OPTIONS = gql`
+  query GetDeliveryOptions {
+    deliveryOptions {
+      type
+      title
+      price
+      window {
+        startDate
+        endDate
+        startTime
+        endTime
+      }
+    }
+    deliveryDays {
+      date
+      available
+    }
+  }
+`;
+
+// Time slots for one delivery day
+export const GET_DELIVERY_SLOTS = gql`
+  query GetDeliverySlots($date: String!) {
+    deliverySlots(date: $date) {
+      id
+      startTime
+      endTime
+      available
+    }
+  }
+`;

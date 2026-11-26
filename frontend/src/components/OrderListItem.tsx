@@ -19,12 +19,12 @@ interface OrderListItemProps {
   orderId: string
   onAmountChange: (productId: string, newAmount: number) => void
   onDelete: (productId: string) => void
-  onSubmitOrder?: (orderId: string) => void
+  onCheckout?: (orderId: string) => void
   status: string;
   isLast: boolean;
 }
 
-const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onSubmitOrder, status, isLast }) => {
+const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, orderId, onAmountChange, onDelete, onCheckout, status, isLast }) => {
   const [currentAmount, setCurrentAmount] = useState(amount)
 
   const [deleteProduct] = useMutation(DELETE_PRODUCT_FROM_ORDER, {
@@ -131,13 +131,13 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ product, amount, price, o
           </div>
         </CardContent>
       </Card>
-      {isLast && status === 'created' && onSubmitOrder && (
+      {isLast && status === 'created' && onCheckout && (
         <div className="mt-6 flex justify-end">
           <Button
-            onClick={() => onSubmitOrder(orderId)}
+            onClick={() => onCheckout(orderId)}
             className="min-w-[120px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
-            Submit Order
+            Checkout
           </Button>
         </div>
       )}

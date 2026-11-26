@@ -16,11 +16,14 @@ import { PromoController } from './controllers/promoController';
 import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
-import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { AddressService } from './services/addressService';
+import { DeliveryService } from './services/deliveryService';
+import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository, InMemoryAddressRepository, InMemoryPromoRedemptionRepository } from './repositories/implementations';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  /** Everything GET /reset/orders puts back to its initial state. */
+  private resettableRepositories: Array<{ reset(): void }> = [];
 
   constructor() {
     this.app = express();
@@ -53,7 +56,7 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+    this.resettableRepositories.push(orderRepository);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
@@ -69,7 +72,7 @@ export class App {
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(this.resettableRepositories));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -103,15 +106,19 @@ export class App {
     const orderRepository = new InMemoryOrderRepository();
     const productRepository = new InMemoryProductRepository();
     const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
+    this.resettableRepositories.push(orderRepository);
 
     // Initialize services
     const authService = new AuthService(authRepository, userRepository);
     const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
+    const promoRedemptionRepository = new InMemoryPromoRedemptionRepository();
+    this.resettableRepositories.push(promoRedemptionRepository);
+    const promoService = new PromoService(promoRepository, promoRedemptionRepository);
+    const addressService = new AddressService(new InMemoryAddressRepository());
+    const deliveryService = new DeliveryService();
 
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(orderService, authService, promoService, addressService, deliveryService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware

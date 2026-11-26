@@ -1,6 +1,9 @@
 import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
 import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
 
+const toCents = (dollars: number): number => Math.round(dollars * 100);
+const fromCents = (cents: number): number => cents / 100;
+
 export class OrderService {
   constructor(
     private orderRepository: IOrderRepository,
@@ -27,30 +30,35 @@ export class OrderService {
     return this.transformToDTO(order);
   }
 
+  /**
+   * Order total in dollars, after the promo discount.
+   * Money is computed in integer cents so the result is always a whole number
+   * of cents (no 1349.982) and subtotal - discount = total holds to the cent.
+   */
   calculateOrderSum(products: Array<{id: string, amount: number, price: number}>, promoId?: string): number {
-    const subtotal = products.reduce((total, product) => {
-      return total + (product.amount * product.price);
+    const subtotalCents = products.reduce((total, product) => {
+      return total + toCents(product.price) * product.amount;
     }, 0);
 
     if (!promoId) {
-      return subtotal;
+      return fromCents(subtotalCents);
     }
 
     // Validate promo
     const promo = this.promoRepository.findById(promoId);
     if (!promo) {
-      return subtotal; // Return original sum if promo not found
+      return fromCents(subtotalCents); // Return original sum if promo not found
     }
 
     // Check if promo is expired
     const currentTime = Date.now();
     if (currentTime > promo.dueDate) {
-      return subtotal; // Return original sum if promo expired
+      return fromCents(subtotalCents); // Return original sum if promo expired
     }
 
-    // Apply discount
-    const discount = (subtotal * promo.discount) / 100;
-    return subtotal - discount;
+    // Apply discount, rounded to the nearest cent
+    const discountCents = Math.round((subtotalCents * promo.discount) / 100);
+    return fromCents(subtotalCents - discountCents);
   }
 
   async deleteProductFromOrder(orderId: string, productId: string, userId: string): Promise<OrderDTO | null> {
@@ -116,7 +124,7 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
+  async submitOrder(orderId: string, userId: string, promo?: PromoEntity): Promise<boolean> {
     const order = this.orderRepository.findById(orderId);
     
     if (!order) {
@@ -135,7 +143,8 @@ export class OrderService {
     // Update order status to 'submited'
     const updatedOrder: OrderRecord = {
       ...order,
-      status: 'submited'
+      status: 'submited',
+      ...(promo ? { promo } : {})
     };
 
     // Update the in-memory repository

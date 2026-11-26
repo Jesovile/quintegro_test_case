@@ -1,4 +1,5 @@
 import { gql } from 'apollo-server-express';
+import { CheckoutErrorCode } from '../types/enums';
 
 export const typeDefs = gql`
   type Product {
@@ -25,6 +26,56 @@ export const typeDefs = gql`
     status: OrderStatus!
     products: [OrderItem!]!
     promo: Promo
+    checkout: Checkout
+  }
+
+  input CustomerInfoInput {
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String!
+    address: String!
+    zipcode: String!
+  }
+
+  input CreditCardInput {
+    cardholderName: String!
+    number: String!
+    expiryMonth: Int!
+    expiryYear: Int!
+    securityCode: String!
+  }
+
+  input CheckoutInput {
+    customer: CustomerInfoInput!
+    creditCard: CreditCardInput!
+  }
+
+  type Checkout {
+    orderId: ID!
+    userId: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String!
+    address: String!
+    zipcode: String!
+    paymentId: ID!
+    paymentProvider: String!
+  }
+
+  enum SubmissionCode {
+    APPROVED
+    ${Object.values(CheckoutErrorCode).join('\n    ')}
+  }
+
+  type SubmitOrderResult {
+    success: Boolean!
+    code: SubmissionCode!
+    message: String!
+    orderId: ID!
+    paymentId: ID
+    paymentProvider: String
   }
 
   enum OrderStatus {
@@ -57,7 +108,7 @@ export const typeDefs = gql`
 
   type Mutation {
     login(input: LoginInput!): LoginResponse!
-    submitOrder(orderId: ID!): Boolean!
+    submitOrder(orderId: ID!, input: CheckoutInput!): SubmitOrderResult!
     deleteProductFromOrder(orderId: ID!, productId: ID!): Order
   }
 `;

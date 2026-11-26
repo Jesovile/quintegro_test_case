@@ -13,12 +13,16 @@ export const createApolloServer = (orderService: OrderService, authService: Auth
     resolvers,
     context: ({ req }) => ({ req }),
     formatError: (error) => {
-      console.error('GraphQL Error:', error);
+      const code = typeof error.extensions?.code === 'string' ? error.extensions.code : 'INTERNAL_SERVER_ERROR';
+      // GraphQL coercion/parse errors can echo card values from variables or literals.
+      const invalidInput = ['BAD_USER_INPUT', 'GRAPHQL_VALIDATION_FAILED', 'GRAPHQL_PARSE_FAILED'].includes(code);
       return {
-        message: error.message,
-        path: error.path
+        message: invalidInput ? 'Invalid GraphQL request' : error.message,
+        path: error.path,
+        extensions: { code }
       };
     },
+    debug: false,
     introspection: true,
     playground: true
   });

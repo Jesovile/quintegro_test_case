@@ -1,5 +1,6 @@
-import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity } from '../types/entities';
-import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository } from './interfaces';
+import { UserRecord, AuthRecord, OrderRecord, ProductRecord, PromoEntity, AddressRecord } from '../types/entities';
+import { ADDRESS_MOCKS } from './addressMocks';
+import { IUserRepository, IAuthRepository, IOrderRepository, IProductRepository, IPromoRepository, IAddressRepository, IPromoRedemptionRepository } from './interfaces';
 
 export class InMemoryUserRepository implements IUserRepository {
   private users: UserRecord[] = [
@@ -160,6 +161,11 @@ export class InMemoryOrderRepository implements IOrderRepository {
 export class InMemoryPromoRepository implements IPromoRepository {
   private promos: PromoEntity[] = [
     {
+      id: "WELCOME10",
+      discount: 10,
+      dueDate: Date.now() + (365 * 24 * 60 * 60 * 1000) // 1 year from now
+    },
+    {
       id: "SAVE10",
       discount: 10,
       dueDate: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days from now
@@ -182,5 +188,37 @@ export class InMemoryPromoRepository implements IPromoRepository {
 
   findAll(): PromoEntity[] {
     return [...this.promos];
+  }
+}
+
+export class InMemoryAddressRepository implements IAddressRepository {
+  private addresses: AddressRecord[] = ADDRESS_MOCKS;
+
+  findById(id: string): AddressRecord | undefined {
+    return this.addresses.find(address => address.id === id);
+  }
+
+  findAll(): AddressRecord[] {
+    return [...this.addresses];
+  }
+}
+
+export class InMemoryPromoRedemptionRepository implements IPromoRedemptionRepository {
+  private redemptions = new Set<string>();
+
+  private key(userId: string, promoId: string): string {
+    return `${userId}:${promoId}`;
+  }
+
+  has(userId: string, promoId: string): boolean {
+    return this.redemptions.has(this.key(userId, promoId));
+  }
+
+  add(userId: string, promoId: string): void {
+    this.redemptions.add(this.key(userId, promoId));
+  }
+
+  reset(): void {
+    this.redemptions.clear();
   }
 }

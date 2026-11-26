@@ -54,3 +54,12 @@ export interface PromoEntity {
   discount: number;
   dueDate: number;
 }
+
+export interface AddressRecord {
+  id: string;
+  line1: string;
+  city: string;
+  /** Two-letter USPS state code. */
+  state: string;
+  zip: string;
+}

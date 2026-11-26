@@ -136,21 +136,26 @@ export class OrderService {
   }
 
   async submitOrder(orderId: string, userId: string, input: unknown): Promise<CheckoutRecord> {
+    const { customer, creditCard } = validateCheckout(input);
+
     const order = this.orderRepository.findById(orderId);
     if (!order || order.userId !== userId) {
       throw new CheckoutError(CheckoutErrorCode.ORDER_NOT_FOUND, 'Order not found or access denied');
     }
+
     const previousCheckout = this.checkoutRepository.findByOrderId(orderId);
     if (previousCheckout && order.status === 'submited') {
       return previousCheckout;
     }
+
     if (order.status !== 'created') {
       throw new CheckoutError(CheckoutErrorCode.INVALID_ORDER_STATUS, 'Only created orders can be submitted');
     }
+
     if (this.processingOrders.has(orderId)) {
       throw new CheckoutError(CheckoutErrorCode.ORDER_PROCESSING, 'Payment for this order is already in progress');
     }
-    const { customer, creditCard } = validateCheckout(input);
+
     const amount = this.calculatePaymentAmount(order);
 
     this.processingOrders.add(orderId);
@@ -201,7 +206,9 @@ export class OrderService {
 
   private calculatePaymentAmount(order: OrderRecord): number {
     const invalidTotal = () => new CheckoutError(CheckoutErrorCode.INVALID_ORDER_TOTAL, 'Order must have a valid positive total');
+
     if (order.products.length === 0) throw invalidTotal();
+
     let subtotal = 0;
     for (const product of order.products) {
       const cents = Math.round(product.price * 100);
@@ -209,14 +216,18 @@ export class OrderService {
         || !Number.isInteger(product.amount) || product.amount < 1 || product.amount > 10
         || !Number.isFinite(product.price) || product.price < 0
         || !Number.isSafeInteger(cents) || cents < 0) throw invalidTotal();
+
       subtotal += cents * product.amount;
+
       if (!Number.isSafeInteger(subtotal)) throw invalidTotal();
     }
+
     const promo = order.promo && this.promoRepository.findById(order.promo.id);
     if (promo && promo.dueDate >= Date.now()) {
       if (!Number.isFinite(promo.discount) || promo.discount < 0 || promo.discount > 100) throw invalidTotal();
       subtotal = Math.round(subtotal * (1 - promo.discount / 100));
     }
+    
     if (!Number.isSafeInteger(subtotal) || subtotal <= 0) throw invalidTotal();
     return subtotal;
   }

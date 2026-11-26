@@ -9,15 +9,6 @@ export interface AuthRecord {
   password: string;
 }
 
-export interface LoginRequest {
-  login: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  token: string;
-}
-
 export interface ProductRecord {
   id: string;
   title: string;
@@ -38,15 +29,17 @@ export interface OrderRecord {
   promo?: PromoEntity;
 }
 
-export interface OrderDTO {
+export interface CheckoutRecord {
   orderId: string;
-  status: 'created' | 'submited' | 'finished';
-  products: Array<{
-    product: ProductRecord;
-    amount: number;
-    price: number;
-  }>;
-  promo?: PromoEntity;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  zipcode: string;
+  paymentId: string;
+  paymentProvider: string;
 }
 
 export interface PromoEntity {

@@ -11,8 +11,15 @@ export const LOGIN = gql`
 
 // Mutation to submit an order
 export const SUBMIT_ORDER = gql`
-  mutation SubmitOrder($orderId: ID!) {
-    submitOrder(orderId: $orderId)
+  mutation SubmitOrder($orderId: ID!, $input: CheckoutInput!) {
+    submitOrder(orderId: $orderId, input: $input) {
+      success
+      code
+      message
+      orderId
+      paymentId
+      paymentProvider
+    }
   }
 `;
 

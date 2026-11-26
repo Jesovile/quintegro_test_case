@@ -17,7 +17,9 @@ const authLink = setContext((_, { headers }) => {
   }
 });
 
-const errorLink = onError(({ graphQLErrors, networkError }) => {
+const errorLink = onError(({ operation, graphQLErrors, networkError }) => {
+  // Checkout handles errors with fixed UI messages; never log payment request errors.
+  if (operation.operationName === 'SubmitOrder') return;
   if (graphQLErrors)
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.log(

@@ -17,17 +17,29 @@ import { AuthService } from './services/authService';
 import { OrderService } from './services/orderService';
 import { PromoService } from './services/promoService';
 import { InMemoryUserRepository, InMemoryAuthRepository, InMemoryOrderRepository, InMemoryProductRepository, InMemoryPromoRepository } from './repositories/implementations';
+import { InMemoryCheckoutRepository } from './repositories/checkoutRepository';
+import { MockAcquiringService } from './services/acquiringService';
+import { CheckoutErrorCode } from './types/enums';
 
 export class App {
   public app: express.Application;
-  private orderRepositories: InMemoryOrderRepository[] = [];
+  public readonly ready: Promise<ReturnType<typeof createApolloServer>>;
+  private readonly orderRepository = new InMemoryOrderRepository();
+  private readonly checkoutRepository = new InMemoryCheckoutRepository();
+  private readonly authService = new AuthService(new InMemoryAuthRepository(), new InMemoryUserRepository());
+  private readonly promoRepository = new InMemoryPromoRepository();
+  private readonly promoService = new PromoService(this.promoRepository);
+  private readonly orderService = new OrderService(
+    this.orderRepository, new InMemoryProductRepository(), this.promoRepository,
+    this.checkoutRepository, new MockAcquiringService()
+  );
 
   constructor() {
     this.app = express();
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeSwagger();
-    this.initializeGraphQL();
+    this.ready = this.initializeGraphQL();
   }
 
   private initializeMiddlewares(): void {
@@ -35,6 +47,16 @@ export class App {
     this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+
+    // Body-parser errors can include raw submitted values. Do not echo or log them.
+    this.app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (error?.type === 'entity.parse.failed' || error?.type === 'entity.too.large') {
+        return res.status(error.type === 'entity.too.large' ? 413 : 400).json({
+          success: false, code: CheckoutErrorCode.VALIDATION_ERROR, message: 'Invalid request body'
+        });
+      }
+      next(error);
+    });
     
     // Add delay to all API requests
     this.app.use(delayMiddleware(1500));
@@ -47,29 +69,20 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
     // Initialize controllers
-    const authController = new AuthController(authService);
-    const orderController = new OrderController(orderService, authService);
-    const promoController = new PromoController(promoService);
+    const authController = new AuthController(this.authService);
+    const orderController = new OrderController(this.orderService, this.authService);
+    const promoController = new PromoController(this.promoService);
 
     // Setup routes
     this.app.use('/api', createAuthRoutes(authController));
     this.app.use('/api/order', createOrderRoutes(orderController));
     this.app.use('/api/promo', createPromoRoutes(promoController));
-    this.app.use('/reset/orders', createResetRoutes(this.orderRepositories));
+    this.app.use('/reset/orders', createResetRoutes(() => {
+      if (!this.orderService.resetCheckout()) return false;
+      this.orderRepository.reset();
+      return true;
+    }));
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
@@ -96,22 +109,9 @@ export class App {
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   }
 
-  private async initializeGraphQL(): Promise<void> {
-    // Initialize repositories
-    const userRepository = new InMemoryUserRepository();
-    const authRepository = new InMemoryAuthRepository();
-    const orderRepository = new InMemoryOrderRepository();
-    const productRepository = new InMemoryProductRepository();
-    const promoRepository = new InMemoryPromoRepository();
-    this.orderRepositories.push(orderRepository);
-
-    // Initialize services
-    const authService = new AuthService(authRepository, userRepository);
-    const orderService = new OrderService(orderRepository, productRepository, promoRepository);
-    const promoService = new PromoService(promoRepository);
-
+  private async initializeGraphQL() {
     // Create Apollo Server
-    const apolloServer = createApolloServer(orderService, authService, promoService);
+    const apolloServer = createApolloServer(this.orderService, this.authService, this.promoService);
     await apolloServer.start();
 
     // Apply Apollo Server middleware
@@ -122,6 +122,7 @@ export class App {
     });
 
     console.log(`🚀 GraphQL server ready at http://localhost:3000${apolloServer.graphqlPath}`);
+    return apolloServer;
   }
 
   public listen(port: number): void {

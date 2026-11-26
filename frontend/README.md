@@ -91,3 +91,26 @@ The development server runs on `http://localhost:3001` and includes:
 ### Development
 - Vite 4.4.5
 - ESLint 8.45.0
+
+## Checkout
+
+Created orders have a **Proceed to checkout** action that opens
+`/runtime/checkout/:orderId`. Checkout reloads the saved order and shows a
+read-only summary. Quantity persistence is unchanged; unsaved order-list edits
+are not carried into checkout.
+
+All customer, address, and card fields are required. The UI combines address and
+State as `<address>, <state>`, and sends `zipcode` separately as a string. ZIP codes
+must use US five-digit or ZIP+4 format, including leading zeros.
+
+The payment request uses the backend's provider-independent `CheckoutInput` and
+structured submission result. Card details remain in component/request memory,
+not browser storage, navigation state, logs, or cached order data. The security
+code is cleared after a failed attempt; all card fields are cleared after
+approval. The page supports declines, provider/network failures, pending payments,
+and success confirmation. Missing/expired sessions can sign in and return to the
+same checkout URL.
+
+Run `npm test` for form validation and payload tests and `npm run build` for the
+TypeScript and production build checks. Mock payment cards are documented in the
+backend README.

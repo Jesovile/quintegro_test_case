@@ -1,6 +1,10 @@
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
 import { PromoService } from '../services/promoService';
+import { SubmitOrderArgsDTO } from '../types/dtos';
+import { CheckoutError } from '../errors/checkoutError';
+import { CheckoutErrorCode } from '../types/enums';
+import { checkoutSuccess, checkoutFailure } from '../mappers/checkoutMapper';
 
 export const createResolvers = (orderService: OrderService, authService: AuthService, promoService: PromoService) => {
   const extractUserIdFromToken = (context: any): string | null => {
@@ -98,20 +102,16 @@ export const createResolvers = (orderService: OrderService, authService: AuthSer
         }
       },
 
-      submitOrder: async (parent: any, { orderId }: { orderId: string }, context: any) => {
-        const userId = extractUserIdFromToken(context);
-        if (!userId) {
-          throw new Error('Authentication required');
-        }
-
+      submitOrder: async (parent: any, { orderId, input }: SubmitOrderArgsDTO, context: any) => {
         try {
-          const success = await orderService.submitOrder(orderId, userId);
-          if (!success) {
-            throw new Error('Order not found or access denied');
+          const userId = extractUserIdFromToken(context);
+          if (!userId) {
+            throw new CheckoutError(CheckoutErrorCode.AUTHENTICATION_REQUIRED, 'Authentication required');
           }
-          return success;
+          const checkout = await orderService.submitOrder(orderId, userId, input);
+          return checkoutSuccess(checkout);
         } catch (error) {
-          throw new Error('Failed to submit order');
+          return checkoutFailure(error, orderId);
         }
       },
 

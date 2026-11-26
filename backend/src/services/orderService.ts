@@ -1,11 +1,22 @@
-import { OrderRecord, OrderDTO, ProductRecord, PromoEntity } from '../types/entities';
-import { IOrderRepository, IProductRepository, IPromoRepository } from '../repositories/interfaces';
+import { randomUUID } from 'crypto';
+import { CheckoutRecord, OrderRecord } from '../types/entities';
+import { AcquiringResultDTO, CreditCardDTO, OrderDTO, OrderItemDTO, PaymentApprovalDTO, ProductInputDTO } from '../types/dtos';
+import { CheckoutErrorCode } from '../types/enums';
+import { CheckoutError } from '../errors/checkoutError';
+import { IOrderRepository, IProductRepository, IPromoRepository, ICheckoutRepository } from '../repositories/interfaces';
+import { IAcquiringService } from './interfaces';
+import { validateCheckout } from './checkoutValidation';
 
 export class OrderService {
+  private processingOrders = new Set<string>();
+  private paymentNamespace = randomUUID();
+
   constructor(
     private orderRepository: IOrderRepository,
     private productRepository: IProductRepository,
-    private promoRepository: IPromoRepository
+    private promoRepository: IPromoRepository,
+    private checkoutRepository: ICheckoutRepository,
+    private acquiringService: IAcquiringService
   ) {}
 
   async getOrdersByUserId(userId: string): Promise<OrderDTO[]> {
@@ -27,7 +38,7 @@ export class OrderService {
     return this.transformToDTO(order);
   }
 
-  calculateOrderSum(products: Array<{id: string, amount: number, price: number}>, promoId?: string): number {
+  calculateOrderSum(products: ProductInputDTO[], promoId?: string): number {
     const subtotal = products.reduce((total, product) => {
       return total + (product.amount * product.price);
     }, 0);
@@ -64,6 +75,10 @@ export class OrderService {
       return null;
     }
 
+    if (order.status !== 'created' || this.processingOrders.has(orderId)) {
+      return null;
+    }
+
     // Remove the product from the order
     const updatedProducts = order.products.filter(item => item.id !== productId);
     
@@ -96,6 +111,10 @@ export class OrderService {
       return null;
     }
 
+    if (order.status !== 'created' || this.processingOrders.has(orderId)) {
+      return null;
+    }
+
     // Update the product amount
     const updatedProducts = order.products.map(item => 
       item.id === productId 
@@ -116,31 +135,101 @@ export class OrderService {
     return this.transformToDTO(updatedOrder);
   }
 
-  async submitOrder(orderId: string, userId: string): Promise<boolean> {
+  async submitOrder(orderId: string, userId: string, input: unknown): Promise<CheckoutRecord> {
+    const { customer, creditCard } = validateCheckout(input);
+
     const order = this.orderRepository.findById(orderId);
-    
-    if (!order) {
-      return false;
+    if (!order || order.userId !== userId) {
+      throw new CheckoutError(CheckoutErrorCode.ORDER_NOT_FOUND, 'Order not found or access denied');
     }
 
-    if (order.userId !== userId) {
-      return false;
+    const previousCheckout = this.checkoutRepository.findByOrderId(orderId);
+    if (previousCheckout && order.status === 'submited') {
+      return previousCheckout;
     }
 
-    // Check if order is in 'created' status
     if (order.status !== 'created') {
-      return false;
+      throw new CheckoutError(CheckoutErrorCode.INVALID_ORDER_STATUS, 'Only created orders can be submitted');
     }
 
-    // Update order status to 'submited'
-    const updatedOrder: OrderRecord = {
-      ...order,
-      status: 'submited'
-    };
+    if (this.processingOrders.has(orderId)) {
+      throw new CheckoutError(CheckoutErrorCode.ORDER_PROCESSING, 'Payment for this order is already in progress');
+    }
 
-    // Update the in-memory repository
-    this.updateOrder(updatedOrder);
+    const amount = this.calculatePaymentAmount(order);
+
+    this.processingOrders.add(orderId);
+    try {
+      const payment = await this.acquirePayment(orderId, amount, creditCard);
+      const checkout: CheckoutRecord = {
+        ...customer, orderId, userId,
+        paymentId: payment.paymentId,
+        paymentProvider: payment.provider
+      };
+      // These synchronous in-memory writes cannot interleave with another request.
+      this.checkoutRepository.save(checkout);
+      this.updateOrder({ ...order, status: 'submited' });
+      return checkout;
+    } finally {
+      this.processingOrders.delete(orderId);
+    }
+  }
+
+  private async acquirePayment(orderId: string, amount: number, creditCard: CreditCardDTO): Promise<PaymentApprovalDTO> {
+    let result: AcquiringResultDTO;
+    try {
+      result = await this.acquiringService.charge({
+        orderId, amount, creditCard,
+        idempotencyKey: `${this.paymentNamespace}:${orderId}`,
+        currency: 'USD'
+      });
+    } catch {
+      // Provider exceptions may contain card data. Discard them without logging.
+      throw new CheckoutError(CheckoutErrorCode.PAYMENT_PROVIDER_ERROR, 'Payment provider is unavailable');
+    }
+    if (result?.status === 'declined') {
+      throw new CheckoutError(CheckoutErrorCode.PAYMENT_DECLINED, 'Payment was declined');
+    }
+    if (result?.status !== 'approved' || typeof result.paymentId !== 'string' || !result.paymentId.trim()
+      || typeof result.provider !== 'string' || !result.provider.trim()) {
+      throw new CheckoutError(CheckoutErrorCode.PAYMENT_PROVIDER_ERROR, 'Payment provider is unavailable');
+    }
+    return result;
+  }
+
+  resetCheckout(): boolean {
+    if (this.processingOrders.size > 0) return false;
+    this.checkoutRepository.reset();
+    this.paymentNamespace = randomUUID();
     return true;
+  }
+
+  private calculatePaymentAmount(order: OrderRecord): number {
+    const invalidTotal = () => new CheckoutError(CheckoutErrorCode.INVALID_ORDER_TOTAL, 'Order must have a valid positive total');
+
+    if (order.products.length === 0) throw invalidTotal();
+
+    let subtotal = 0;
+    for (const product of order.products) {
+      const cents = Math.round(product.price * 100);
+      if (!this.productRepository.findById(product.id)
+        || !Number.isInteger(product.amount) || product.amount < 1 || product.amount > 10
+        || !Number.isFinite(product.price) || product.price < 0
+        || !Number.isSafeInteger(cents) || cents < 0) throw invalidTotal();
+
+      subtotal += cents * product.amount;
+
+      if (!Number.isSafeInteger(subtotal)) throw invalidTotal();
+    }
+
+    const promo = order.promo && this.promoRepository.findById(order.promo.id);
+    if (promo && promo.dueDate >= Date.now()) {
+      if (!Number.isFinite(promo.discount) || promo.discount < 0 || promo.discount > 100) throw invalidTotal();
+      subtotal = Math.round(subtotal * (1 - promo.discount / 100));
+    }
+    
+    if (!Number.isSafeInteger(subtotal) || subtotal <= 0) throw invalidTotal();
+    return subtotal;
   }
 
   private updateOrder(updatedOrder: OrderRecord): void {
@@ -165,7 +254,7 @@ export class OrderService {
     });
 
     // Remove duplicates and sum amounts for same products
-    const uniqueProducts = new Map<string, { product: ProductRecord; amount: number; price: number }>();
+    const uniqueProducts = new Map<string, OrderItemDTO>();
     
     products.forEach(item => {
       const existing = uniqueProducts.get(item.product.id);
@@ -183,7 +272,9 @@ export class OrderService {
     return {
       orderId: order.orderId,
       status: order.status,
-      products: Array.from(uniqueProducts.values())
+      products: Array.from(uniqueProducts.values()),
+      promo: order.promo,
+      checkout: this.checkoutRepository.findByOrderId(order.orderId)
     };
   }
 }

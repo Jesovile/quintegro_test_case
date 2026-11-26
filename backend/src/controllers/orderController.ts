@@ -1,17 +1,22 @@
 import { Request, Response } from 'express';
 import { OrderService } from '../services/orderService';
 import { AuthService } from '../services/authService';
+import { OrderSumRequestDTO } from '../types/dtos';
+import { CheckoutErrorCode } from '../types/enums';
+import { CheckoutError } from '../errors/checkoutError';
+import { checkoutSuccess, checkoutFailure } from '../mappers/checkoutMapper';
 
-interface ProductItem {
-  id: string;
-  amount: number;
-  price: number;
-}
-
-interface OrderSumRequest {
-  products: ProductItem[];
-  promo?: string;
-}
+const submissionStatus: Record<CheckoutErrorCode, number> = {
+  [CheckoutErrorCode.AUTHENTICATION_REQUIRED]: 403,
+  [CheckoutErrorCode.ORDER_NOT_FOUND]: 404,
+  [CheckoutErrorCode.INVALID_ORDER_STATUS]: 409,
+  [CheckoutErrorCode.ORDER_PROCESSING]: 409,
+  [CheckoutErrorCode.VALIDATION_ERROR]: 400,
+  [CheckoutErrorCode.INVALID_ORDER_TOTAL]: 400,
+  [CheckoutErrorCode.PAYMENT_DECLINED]: 402,
+  [CheckoutErrorCode.PAYMENT_PROVIDER_ERROR]: 502,
+  [CheckoutErrorCode.INTERNAL_ERROR]: 500
+};
 
 export class OrderController {
   constructor(
@@ -82,7 +87,7 @@ export class OrderController {
       }
 
       const { orderId } = req.params;
-      const { products, promo } = req.body as OrderSumRequest;
+      const { products, promo } = req.body as OrderSumRequestDTO;
 
       if (!products || !Array.isArray(products)) {
         return res.status(400).json({ error: 'Products array is required' });
@@ -134,29 +139,19 @@ export class OrderController {
   }
 
   async submitOrder(req: Request, res: Response) {
+    const { orderId } = req.params;
     try {
       const userId = this.extractUserIdFromToken(req);
       
       if (!userId) {
-        return res.status(403).json({ error: 'Invalid or missing authentication token' });
+        throw new CheckoutError(CheckoutErrorCode.AUTHENTICATION_REQUIRED, 'Authentication required');
       }
 
-      const { orderId } = req.params;
-
-      if (!orderId) {
-        return res.status(400).json({ error: 'Order ID is required' });
-      }
-
-      const success = await this.orderService.submitOrder(orderId, userId);
-
-      if (!success) {
-        return res.status(404).json({ error: 'Order not found or access denied' });
-      }
-
-      return res.status(200).send();
+      const result = await this.orderService.submitOrder(orderId, userId, req.body);
+      return res.status(200).json(checkoutSuccess(result));
     } catch (error) {
-      console.error('Submit order error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      const failure = checkoutFailure(error, orderId);
+      return res.status(submissionStatus[failure.code]).json(failure);
     }
   }
 }

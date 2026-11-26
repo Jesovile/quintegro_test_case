@@ -269,9 +269,10 @@ export function createOrderRoutes(orderController: OrderController): Router {
 
   /**
    * @swagger
-   * /order/{orderId}:
+   * /api/order/{orderId}:
    *   post:
-   *     summary: Submit an order (change status to 'submited')
+   *     summary: Pay for and submit an order
+   *     description: Customer information is saved only after approval. Card details are never stored. Repeated successful submissions return the original payment ID and provider.
    *     tags: [Orders]
    *     security:
    *       - bearerAuth: []
@@ -281,51 +282,61 @@ export function createOrderRoutes(orderController: OrderController): Router {
    *         required: true
    *         schema:
    *           type: string
-   *         description: Unique identifier of the order
-   *         example: "order-1"
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CheckoutInput'
    *     responses:
    *       200:
-   *         description: Order submitted successfully
+   *         description: Payment approved and order submitted
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SubmitOrderResult'
    *       400:
-   *         description: Bad request - Missing order ID
+   *         description: Invalid checkout input or order total
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 error:
-   *                   type: string
-   *                   example: "Order ID is required"
+   *               $ref: '#/components/schemas/SubmitOrderResult'
+   *       402:
+   *         description: Payment declined; nothing saved
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SubmitOrderResult'
    *       403:
-   *         description: Forbidden - Invalid authentication token
+   *         description: Authentication required
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 error:
-   *                   type: string
-   *                   example: "Invalid or missing authentication token"
+   *               $ref: '#/components/schemas/SubmitOrderResult'
    *       404:
    *         description: Order not found or access denied
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 error:
-   *                   type: string
-   *                   example: "Order not found or access denied"
+   *               $ref: '#/components/schemas/SubmitOrderResult'
+   *       409:
+   *         description: Order already processing or in an invalid status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SubmitOrderResult'
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 error:
-   *                   type: string
-   *                   example: "Internal server error"
+   *               $ref: '#/components/schemas/SubmitOrderResult'
+   *       502:
+   *         description: Payment provider unavailable; nothing saved
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SubmitOrderResult'
    */
   router.post('/:orderId', (req, res) => orderController.submitOrder(req, res));
 

@@ -1,4 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
+import { CheckoutErrorCode } from '../types/enums';
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -23,6 +24,68 @@ const options: swaggerJsdoc.Options = {
         }
       },
       schemas: {
+        CustomerInfo: {
+          type: 'object',
+          required: ['firstName', 'lastName', 'email', 'phone', 'address', 'zipcode'],
+          properties: {
+            firstName: { type: 'string', minLength: 1, maxLength: 100 },
+            lastName: { type: 'string', minLength: 1, maxLength: 100 },
+            email: { type: 'string', format: 'email', maxLength: 254 },
+            phone: { type: 'string', maxLength: 40, description: '7 to 15 digits; common separators and a leading + are accepted' },
+            address: { type: 'string', minLength: 1, maxLength: 1000 },
+            zipcode: { type: 'string', pattern: '^\\d{5}(-\\d{4})?$', description: 'US ZIP or ZIP+4 code; leading zeros are preserved' }
+          }
+        },
+        CreditCardInput: {
+          type: 'object',
+          writeOnly: true,
+          required: ['cardholderName', 'number', 'expiryMonth', 'expiryYear', 'securityCode'],
+          properties: {
+            cardholderName: { type: 'string', maxLength: 100 },
+            number: { type: 'string', writeOnly: true, description: '13 to 19 digits passing Luhn validation; spaces and hyphens accepted' },
+            expiryMonth: { type: 'integer', minimum: 1, maximum: 12 },
+            expiryYear: { type: 'integer', description: 'Four-digit year; card must not be expired' },
+            securityCode: { type: 'string', writeOnly: true, pattern: '^\\d{3,4}$' }
+          }
+        },
+        CheckoutInput: {
+          type: 'object',
+          required: ['customer', 'creditCard'],
+          properties: {
+            customer: { $ref: '#/components/schemas/CustomerInfo' },
+            creditCard: { $ref: '#/components/schemas/CreditCardInput' }
+          }
+        },
+        Checkout: {
+          allOf: [
+            { $ref: '#/components/schemas/CustomerInfo' },
+            {
+              type: 'object',
+              required: ['orderId', 'userId', 'paymentId', 'paymentProvider'],
+              properties: {
+                orderId: { type: 'string' },
+                userId: { type: 'string' },
+                paymentId: { type: 'string', description: 'Payment identifier issued by the bank' },
+                paymentProvider: { type: 'string', description: 'Acquiring provider identifier' }
+              }
+            }
+          ]
+        },
+        SubmitOrderResult: {
+          type: 'object',
+          required: ['success', 'code', 'message', 'orderId'],
+          properties: {
+            success: { type: 'boolean' },
+            code: {
+              type: 'string',
+              enum: ['APPROVED', ...Object.values(CheckoutErrorCode)]
+            },
+            message: { type: 'string' },
+            orderId: { type: 'string' },
+            paymentId: { type: 'string' },
+            paymentProvider: { type: 'string' }
+          }
+        },
         UserRecord: {
           type: 'object',
           properties: {
@@ -173,6 +236,7 @@ const options: swaggerJsdoc.Options = {
         OrderDTO: {
           type: 'object',
           properties: {
+            checkout: { $ref: '#/components/schemas/Checkout' },
             orderId: {
               type: 'string',
               description: 'Unique order identifier',
